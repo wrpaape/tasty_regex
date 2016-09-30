@@ -31,14 +31,16 @@ struct TastyMatchInterval {
 };
 
 struct TastyState {
-	struct TastyState *next[UCHAR_MAX];
-	struct TastyMatch *match;
+	struct TastyState *next_step[UCHAR_MAX]; /* jump forward for this state */
+	struct TastyState *next_peer;		 /* next parallel matching state */
+	unsigned char *match_from;
 };
 
 
 struct TastyRegex {
 	struct TastyMatchInterval matches;
 	struct TastyState *initial;
+	struct TastyState *current;
 };
 
 
