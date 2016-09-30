@@ -107,7 +107,7 @@ endif
 # ══════════════════════════════════════════════════════════════════════════════
 PATH_JOIN		 = $(call JOIN,$1,$(PATH_DELIM))
 SYSTEM_ROOT_PATH	 = $(call TRIM,$(PATH_DELIM)$(call PATH_JOIN,$1))
-PROJECT 		:= tasty_regex
+PROJECT 		:= tasty_grep
 PROJECT_ROOT		:= ..
 SOURCE_DIR		:= $(call PATH_JOIN,$(PROJECT_ROOT) src)
 HEADER_DIR		:= $(SOURCE_DIR)
@@ -124,7 +124,6 @@ UNITY_SOURCE_DIR	:= $(call PATH_JOIN,$(UNITY_ROOT) src)
 UNITY_HEADER_DIR	:= $(UNITY_SOURCE_DIR)
 UNITY_OBJECT_DIR	:= $(call PATH_JOIN,$(UNITY_ROOT) obj)
 UNITY_AUTO_DIR  	:= $(call PATH_JOIN,$(UNITY_ROOT) auto)
-MYSQL_INCLUDE_DIR	:= $(call PATH_JOIN,$(PROJECT_ROOT) include mysql)
 
 
 # PATH CONFIG
@@ -173,8 +172,8 @@ endif # ifeq (T,$(DEVELOPMENT_MODE))
 # C Compiler
 # ──────────────────────────────────────────────────────────────────────────────
 CC		:= gcc
-CC_ENV_FLAGS	:= -D__USE_FIXED_PROTOTYPES__ -D_GNU_SOURCE -DROOT_ABSPATH=$(PROJECT_ROOT_ABSOLUTE) $(SYS_ENV_FLAGS)
-CC_BASE_FLAGS	:= -std=gnu99 -march=native $(CC_ENV_FLAGS) -I$(HEADER_DIR) -I$(MYSQL_INCLUDE_DIR) $(THREADS_INC_FLAG)
+CC_ENV_FLAGS	:= -D__USE_FIXED_PROTOTYPES__ -D_GNU_SOURCE $(SYS_ENV_FLAGS)
+CC_BASE_FLAGS	:= -std=gnu99 -march=native $(CC_ENV_FLAGS) -I$(HEADER_DIR)
 
 ifeq (T,$(DEVELOPMENT_MODE))
 CC_FLAGS	:= -g -Wall $(CC_BASE_FLAGS)
@@ -232,9 +231,20 @@ BUILD_DIRS	:= $(OBJECT_DIR)		\
 		   $(BINARY_DIR)
 
 
-## Main Module
+# tasty_regex (main module)
 # ══════════════════════════════════════════════════════════════════════════════
-# tasty_regex (entry point)
+TASTY_REGEX_SRC 	:= $(call SOURCE_PATH,tasty_regex)
+TASTY_REGEX_HDR		:= $(call HEADER_PATH,tasty_regex)
+TASTY_REGEX_OBJ 	:= $(call OBJECT_PATH,tasty_regex)
+# ─────────────── target prequisites ───────────────────────────────────────────
+TASTY_REGEX_OBJ_PREQS	:= $(TASTY_REGEX_SRC) 		\
+			   $(TASTY_REGEX_HDR)
+TASTY_REGEX_OBJ_GROUP	:= $(TASTY_REGEX_OBJ)
+# ─────────────── targets ──────────────────────────────────────────────────────
+TARGETS			+= $(TASTY_REGEX_OBJ)
+
+
+# tasty_grep (entry point)
 # ──────────────────────────────────────────────────────────────────────────────
 PROJECT_SRC 		:= $(call SOURCE_PATH,$(PROJECT))
 PROJECT_HDR		:= $(call HEADER_PATH,$(PROJECT))
@@ -242,11 +252,10 @@ PROJECT_OBJ 		:= $(call OBJECT_PATH,$(PROJECT))
 PROJECT_BIN 		:= $(call BINARY_PATH,$(PROJECT))
 # ─────────────── target prequisites ───────────────────────────────────────────
 PROJECT_BIN_PREQS	:= $(PROJECT_OBJ)
-
-PROJECT_OBJ_PREQS	:= $(PROJECT_SRC) 		\
+PROJECT_OBJ_PREQS	:= $(PROJECT_SRC) 	\
 			   $(PROJECT_HDR)
 # ─────────────── targets ──────────────────────────────────────────────────────
-TARGETS			+= $(PROJECT_OBJ)		\
+TARGETS			+= $(PROJECT_OBJ)	\
 			   $(PROJECT_BIN)
 
 
@@ -272,9 +281,9 @@ else
 RUN_ALL_TESTS		:= for test in $(TEST_FILES_GLOB); do "./$$test"; done
 endif
 # ─────────────── target prequisites ───────────────────────────────────────────
-UNITY_OBJ_PREQS		:= $(UNITY_SRC)					\
-			   $(UNITY_HDR)					\
-			   $(UNITY_INTERNALS_HDR)			\
+UNITY_OBJ_PREQS		:= $(UNITY_SRC)			\
+			   $(UNITY_HDR)			\
+			   $(UNITY_INTERNALS_HDR)	\
 			   $(UNITY_CONFIG_HDR)
 # ─────────────── targets ──────────────────────────────────────────────────────
 BUILD_DIRS 		+= $(TEST_RUNNER_SOURCE_DIR)
@@ -282,33 +291,31 @@ TARGETS			+= $(UNITY_OBJ)
 
 
 
-# ## Main Module
-# # ══════════════════════════════════════════════════════════════════════════════
-# # utils/utils unit test
-# # ──────────────────────────────────────────────────────────────────────────────
-# UTILS_UTILS_TEST_SRC		:= $(call HELPER_TEST_SOURCE_PATH,utils utils)
-# UTILS_UTILS_TRNR_SRC		:= $(call HELPER_TEST_RUNNER_SOURCE_PATH,utils utils)
-# UTILS_UTILS_TRNR_OBJ		:= $(call HELPER_TEST_RUNNER_OBJECT_PATH,utils utils)
-# UTILS_UTILS_TEST_OBJ		:= $(call HELPER_TEST_OBJECT_PATH,utils utils)
-# UTILS_UTILS_TEST_BIN		:= $(call HELPER_TEST_BINARY_PATH,utils utils)
-# # ─────────────── target prequisites ───────────────────────────────────────────
-# UTILS_UTILS_TRNR_SRC_PREQS	:= $(UTILS_UTILS_TEST_SRC)		\
-# 				   $(TEST_RUNNER_SOURCE_DIR)
-# UTILS_UTILS_TEST_OBJ_PREQS	:= $(UTILS_UTILS_TEST_SRC)		\
-# 			   	   $(UTILS_UTILS_OBJ_PREQS) 		\
-# 			   	   $(UNITY_OBJ_PREQS)
-# UTILS_UTILS_TRNR_OBJ_PREQS	:= $(UTILS_UTILS_TRNR_SRC)		\
-# 			   	   $(UTILS_UTILS_TEST_OBJ_PREQS)
-# UTILS_UTILS_TEST_BIN_PREQS	:= $(UTILS_UTILS_TRNR_OBJ)		\
-# 				   $(UTILS_UTILS_TEST_OBJ)		\
-# 			   	   $(UTILS_UTILS_OBJ_GROUP)		\
-# 			   	   $(UNITY_OBJ)
-# # ─────────────── targets ──────────────────────────────────────────────────────
-# TEST_BINARIES			+= $(UTILS_UTILS_TEST_BIN)
-# TARGETS				+= $(UTILS_UTILS_TRNR_SRC)		\
-# 				   $(UTILS_UTILS_TRNR_OBJ)		\
-# 				   $(UTILS_UTILS_TEST_OBJ)		\
-# 				   $(UTILS_UTILS_TEST_BIN)
+# tasty_regex unit test
+# ──────────────────────────────────────────────────────────────────────────────
+TASTY_REGEX_TEST_SRC		:= $(call TEST_SOURCE_PATH,tasty_regex)
+TASTY_REGEX_TRNR_SRC		:= $(call TEST_RUNNER_SOURCE_PATH,tasty_regex)
+TASTY_REGEX_TRNR_OBJ		:= $(call TEST_RUNNER_OBJECT_PATH,tasty_regex)
+TASTY_REGEX_TEST_OBJ		:= $(call TEST_OBJECT_PATH,tasty_regex)
+TASTY_REGEX_TEST_BIN		:= $(call TEST_BINARY_PATH,tasty_regex)
+# ─────────────── target prequisites ───────────────────────────────────────────
+TASTY_REGEX_TRNR_SRC_PREQS	:= $(TASTY_REGEX_TEST_SRC)		\
+				   $(TEST_RUNNER_SOURCE_DIR)
+TASTY_REGEX_TEST_OBJ_PREQS	:= $(TASTY_REGEX_TEST_SRC)		\
+			   	   $(TASTY_REGEX_OBJ_PREQS) 		\
+			   	   $(UNITY_OBJ_PREQS)
+TASTY_REGEX_TRNR_OBJ_PREQS	:= $(TASTY_REGEX_TRNR_SRC)		\
+			   	   $(TASTY_REGEX_TEST_OBJ_PREQS)
+TASTY_REGEX_TEST_BIN_PREQS	:= $(TASTY_REGEX_TRNR_OBJ)		\
+				   $(TASTY_REGEX_TEST_OBJ)		\
+			   	   $(TASTY_REGEX_OBJ_GROUP)		\
+			   	   $(UNITY_OBJ)
+# ─────────────── targets ──────────────────────────────────────────────────────
+TEST_BINARIES			+= $(TASTY_REGEX_TEST_BIN)
+TARGETS				+= $(TASTY_REGEX_TRNR_SRC)		\
+				   $(TASTY_REGEX_TRNR_OBJ)		\
+				   $(TASTY_REGEX_TEST_OBJ)		\
+				   $(TASTY_REGEX_TEST_BIN)
 endif # ifeq (T,$(DEVELOPMENT_MODE))
 
 
@@ -358,15 +365,21 @@ $(BINARY_DIR):
 
 ## MAKE PROJECT
 # ══════════════════════════════════════════════════════════════════════════════
-# make tasty_regex binary
+# make tasty_grep binary
 # ──────────────────────────────────────────────────────────────────────────────
 $(PROJECT_BIN): $(PROJECT_BIN_PREQS)
 	$(LD) $(LD_FLAGS) $^ $(LD_LIB_FLAGS) -o $@
 
-# # make tasty_regex object
+# # make tasty_grep object
 # # ──────────────────────────────────────────────────────────────────────────────
 $(PROJECT_OBJ): $(PROJECT_OBJ_PREQS)
 	$(CC) $(CC_FLAGS) -c $< -o $@
+
+# # make tasty_regex object
+# # ──────────────────────────────────────────────────────────────────────────────
+$(TASTY_REGEX_OBJ): $(TASTY_REGEX_OBJ_PREQS)
+	$(CC) $(CC_FLAGS) -c $< -o $@
+
 
 
 ifeq (T,$(DEVELOPMENT_MODE))
@@ -378,42 +391,22 @@ $(UNITY_OBJ): $(UNITY_OBJ_PREQS)
 	$(CC) $(UNITY_CC_FLAGS) -c $< -o $@
 
 
-# for mysql_seed_generate
+# for tasty_regex
 # make:
-# 	mysql_seed_generate_test		binary,
-# 	mysql_seed_generate_test_runner 	object,
-# 	mysql_seed_generate_test		object, and
-# 	mysql_seed_generate_test_runner	source
+# 	tasty_regex_test		binary,
+# 	tasty_regex_test_runner 	object,
+# 	tasty_regex_test		object, and
+# 	tasty_regex_test_runner	source
 # ──────────────────────────────────────────────────────────────────────────────
-$(GENERATE_TEST_BIN): $(GENERATE_TEST_BIN_PREQS)
+$(TASTY_REGEX_TEST_BIN): $(TASTY_REGEX_TEST_BIN_PREQS)
 	$(LD) $(LD_FLAGS) $^ $(UNITY_LD_LIB_FLAGS) $(LD_LIB_FLAGS) -o $@
 
-$(GENERATE_TRNR_OBJ): $(GENERATE_TRNR_OBJ_PREQS)
+$(TASTY_REGEX_TRNR_OBJ): $(TASTY_REGEX_TRNR_OBJ_PREQS)
 	$(CC) $(UNITY_CC_FLAGS) -c $< -o $@
 
-$(GENERATE_TEST_OBJ): $(GENERATE_TEST_OBJ_PREQS)
+$(TASTY_REGEX_TEST_OBJ): $(TASTY_REGEX_TEST_OBJ_PREQS)
 	$(CC) $(UNITY_CC_FLAGS) -c $< -o $@
 
-$(GENERATE_TRNR_SRC): $(GENERATE_TRNR_SRC_PREQS)
+$(TASTY_REGEX_TRNR_SRC): $(TASTY_REGEX_TRNR_SRC_PREQS)
 	$(RUBY) $(RUBY_FLAGS) $(UNITY_GEN_TRNR_SCRIPT) $< $@
-
-
-# # for mysql_seed_execute
-# # make:
-# # 	mysql_seed_execute_test		binary,
-# # 	mysql_seed_execute_test_runner 	object,
-# # 	mysql_seed_execute_test		object, and
-# # 	mysql_seed_execute_test_runner	source
-# # ──────────────────────────────────────────────────────────────────────────────
-# $(EXECUTE_TEST_BIN): $(EXECUTE_TEST_BIN_PREQS)
-# 	$(LD) $(LD_FLAGS) $^ $(UNITY_LD_LIB_FLAGS) $(LD_LIB_FLAGS) -o $@
-
-# $(EXECUTE_TRNR_OBJ): $(EXECUTE_TRNR_OBJ_PREQS)
-# 	$(CC) $(UNITY_CC_FLAGS) -c $< -o $@
-
-# $(EXECUTE_TEST_OBJ): $(EXECUTE_TEST_OBJ_PREQS)
-# 	$(CC) $(UNITY_CC_FLAGS) -c $< -o $@
-
-# $(EXECUTE_TRNR_SRC): $(EXECUTE_TRNR_SRC_PREQS)
-# 	$(RUBY) $(RUBY_FLAGS) $(UNITY_GEN_TRNR_SCRIPT) $< $@
 endif # ifeq (T,$(DEVELOPMENT_MODE))

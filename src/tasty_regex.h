@@ -18,6 +18,35 @@ extern "C" {
  * ────────────────────────────────────────────────────────────────────────── */
 
 
+/* typedefs, struct declarations
+ * ────────────────────────────────────────────────────────────────────────── */
+struct TastyMatch {
+	unsigned char *restrict from;
+	const unsigned char *restrict until;
+};
+
+struct TastyMatchInterval {
+	struct TastyMatch *restrict from;
+	const struct TastyMatch *restrict until;
+};
+
+struct TastyState {
+	struct TastyState *next[UCHAR_MAX];
+	struct TastyMatch *match;
+};
+
+
+struct TastyRegex {
+	struct TastyMatchInterval matches;
+	struct TastyState *initial;
+};
+
+
+typedef struct _TastyStateJumpBuffer {
+	struct TastyState *_ptrs[UCHAR_MAX];
+} TastyStateJumpBuffer;
+
+
 
 #ifdef __cplusplus /* close 'extern "C" {' */
 }
