@@ -44,10 +44,18 @@ struct TastyRegex {
 };
 
 
-typedef struct _TastyStateJumpBuffer {
-	struct TastyState *_ptrs[UCHAR_MAX];
-} TastyStateJumpBuffer;
+/* API
+ * ────────────────────────────────────────────────────────────────────────── */
+int
+tasty_regex_compile(struct TastyRegex *const restrict regex,
+		    const unsigned char *restrict pattern);
 
+void
+tasty_regex_run(struct TastyRegex *const restrict regex,
+		const unsigned char *restrict string);
+
+void
+tasty_regex_free(struct TastyRegex *const restrict regex);
 
 
 #ifdef __cplusplus /* close 'extern "C" {' */
