@@ -21,26 +21,24 @@ extern "C" {
 /* typedefs, struct declarations
  * ────────────────────────────────────────────────────────────────────────── */
 struct TastyMatch {
-	unsigned char *restrict from;
+	const unsigned char *restrict from;
 	const unsigned char *restrict until;
 };
 
 struct TastyMatchInterval {
 	struct TastyMatch *restrict from;
-	const struct TastyMatch *restrict until;
+	struct TastyMatch *restrict until;
+};
+
+struct TastyRegex {
+	struct TastyRegex *step[UCHAR_MAX]; /* jump forward for this state */
+	struct TastyRegex *skip; /* shortcut forward if no match is needed */
 };
 
 struct TastyState {
-	struct TastyState *next_step[UCHAR_MAX]; /* jump forward for this state */
-	struct TastyState *next_peer;		 /* next parallel matching state */
-	unsigned char *match_from;
-};
-
-
-struct TastyRegex {
-	struct TastyMatchInterval matches;
-	struct TastyState *initial;
-	struct TastyState *current;
+	const struct TastyRegex *live;	/* currently matching regex */
+	struct TastyState *next;	/* next parallel matching state */
+	const unsigned char *match;	/* beginning of string match */
 };
 
 
@@ -52,10 +50,21 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 
 void
 tasty_regex_run(struct TastyRegex *const restrict regex,
+		struct TastyMatchInterval *const restrict matches,
 		const unsigned char *restrict string);
 
-void
-tasty_regex_free(struct TastyRegex *const restrict regex);
+inline void
+tasty_regex_free(struct TastyRegex *const restrict regex)
+{
+	free(regex);
+}
+
+
+inline void
+tasty_match_interval_free(struct TastyMatchInterval *const restrict matches)
+{
+	free(matches->from);
+}
 
 
 #ifdef __cplusplus /* close 'extern "C" {' */
