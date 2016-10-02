@@ -46,8 +46,8 @@ struct TastyMatchInterval {
 };
 
 struct TastyState {
+	/* step['\0'] reserved for skip step (wildcards) */
 	struct TastyState *step[UCHAR_MAX + 1]; /* jump forward to next state */
-	struct TastyState *skip; /* shortcut forward if no match is needed */
 };
 
 struct TastyRegex {
@@ -56,9 +56,9 @@ struct TastyRegex {
 };
 
 struct TastyAccumulator {
-	const struct TastyState *live;	/* currently matching regex */
-	struct TastyAccumulator *next;	/* next parallel matching state */
-	const unsigned char *match;	/* beginning of string match */
+	const struct TastyState *state;	 /* currently matching regex */
+	struct TastyAccumulator *next;	 /* next parallel matching state */
+	const unsigned char *match_from; /* beginning of string match */
 };
 
 
