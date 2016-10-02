@@ -14,8 +14,23 @@ extern "C" {
 #	endif
 #endif /* ifdef __cplusplus */
 
+
 /* external dependencies
  * ────────────────────────────────────────────────────────────────────────── */
+#include <stdlib.h>	/* size_t, m|calloc, free */
+#include <limits.h>	/* UCHAR_MAX */
+
+
+/* helper macros
+ * ────────────────────────────────────────────────────────────────────────── */
+#define LIKELY(BOOL)   __builtin_expect(BOOL, 1)
+#define UNLIKELY(BOOL) __builtin_expect(BOOL, 0)
+
+
+/* error macros
+ * ────────────────────────────────────────────────────────────────────────── */
+#define TASTY_ERROR_EMPTY_PATTERN 1	/* 'pattern' is "" */
+#define TASTY_ERROR_OUT_OF_MEMORY 2	/* failed to allocate memory */
 
 
 /* typedefs, struct declarations
@@ -30,14 +45,19 @@ struct TastyMatchInterval {
 	struct TastyMatch *restrict until;
 };
 
-struct TastyRegex {
-	struct TastyRegex *step[UCHAR_MAX]; /* jump forward for this state */
-	struct TastyRegex *skip; /* shortcut forward if no match is needed */
+struct TastyState {
+	struct TastyState *step[UCHAR_MAX + 1]; /* jump forward to next state */
+	struct TastyState *skip; /* shortcut forward if no match is needed */
 };
 
-struct TastyState {
-	const struct TastyRegex *live;	/* currently matching regex */
-	struct TastyState *next;	/* next parallel matching state */
+struct TastyRegex {
+	struct TastyState *restrict start;
+	const struct TastyState *restrict matching;
+};
+
+struct TastyAccumulator {
+	const struct TastyState *live;	/* currently matching regex */
+	struct TastyAccumulator *next;	/* next parallel matching state */
 	const unsigned char *match;	/* beginning of string match */
 };
 
@@ -56,7 +76,7 @@ tasty_regex_run(struct TastyRegex *const restrict regex,
 inline void
 tasty_regex_free(struct TastyRegex *const restrict regex)
 {
-	free(regex);
+	free(regex->start);
 }
 
 
@@ -65,6 +85,11 @@ tasty_match_interval_free(struct TastyMatchInterval *const restrict matches)
 {
 	free(matches->from);
 }
+
+/* helper functions
+ * ────────────────────────────────────────────────────────────────────────── */
+static inline size_t
+string_length(const char *const restrict string);
 
 
 #ifdef __cplusplus /* close 'extern "C" {' */
