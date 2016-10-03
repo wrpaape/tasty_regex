@@ -6,25 +6,47 @@ int
 tasty_regex_compile(struct TastyRegex *const restrict regex,
 		    const unsigned char *restrict pattern)
 {
-	const void *restrict *head_state;
+	const void *restrict *state_alloc;
+	const void *restrict *state;
+	struct TastyChunk *restrict chunk_stack;
 
 	const size_t length_pattern = string_length(pattern);
 
 	if (length_pattern == 0lu)
 		return TASTY_ERROR_EMPTY_PATTERN;
 
-	/* allocate stack of state nodes, init all pointers to NULL */
-	head_state = calloc(length_pattern,
-			    sizeof(const void *restrict) * TASTY_STATE_LENGTH);
+	/* allocate stack of chunks (worst case (N + 1) / 2 nodes deep when
+	 * pattern like "a|b|c|d" */
+	struct TastyChunk *const restrict chunk_base
+	= malloc(sizeof(struct TastyChunk) * ((length_pattern + 1lu) / 2lu));
 
-	if (UNLIKELY(head_state == NULL_POINTER))
+	if (UNLIKELY(chunk_base == NULL_POINTER))
 		return TASTY_ERROR_OUT_OF_MEMORY;
 
-	/* 'matching' state set to not-necessarily valid point in memory, (will
-	 * never be accessed anyway) */
-	regex->initial	= head_state;
-	regex->matching = (const void *restrict)
-			  (head_state + (length_pattern * TASTY_STATE_LENGTH));
+	/* allocate worst case length_pattern count of state nodes, allocate all
+	 * pointers to NULL (i.e. no match) */
+	state_alloc = calloc(length_pattern,
+			     sizeof(const void *restrict) * TASTY_STATE_LENGTH);
+
+	if (UNLIKELY(state_alloc == NULL_POINTER)) {
+		free(chunk_base);
+		return TASTY_ERROR_OUT_OF_MEMORY;
+	}
+
+	regex->initial	= state_alloc;
+
+	chunk	    = chunk_base;
+	chunk_stack = chunk + 1l;
+
+
+	while (1) {
+
+	}
+
+	regex->matching = state_alloc;
+
+	free(chunk_base);
+
 	return 0;
 }
 

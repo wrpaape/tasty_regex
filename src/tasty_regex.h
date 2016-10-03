@@ -30,8 +30,9 @@ extern "C" {
 
 /* error macros
  * ────────────────────────────────────────────────────────────────────────── */
-#define TASTY_ERROR_EMPTY_PATTERN 1	/* 'pattern' is "" */
-#define TASTY_ERROR_OUT_OF_MEMORY 2	/* failed to allocate memory */
+#define TASTY_ERROR_EMPTY_PATTERN	1	/* 'pattern' is "" */
+#define TASTY_ERROR_OUT_OF_MEMORY	2	/* failed to allocate memory */
+#define TASTY_ERROR_UNBALANCED_PARENTHS 3	/* parentheses not balanced */
 
 
 /* typedefs, struct declarations
@@ -49,6 +50,12 @@ struct TastyMatchInterval {
 /* struct TastyState { */
 /* 	const struct TastyState *restrict *step; /1* jump forward to next state *1/ */
 /* }; */
+
+/* NFA chunks, used temporarily in compilation */
+struct TastyChunk {
+	const void *restrict *from;
+	const void *restrict *upto;
+};
 
 struct TastyRegex {
 	const void *restrict *initial;
