@@ -6,7 +6,7 @@ int
 tasty_regex_compile(struct TastyRegex *const restrict regex,
 		    const unsigned char *restrict pattern)
 {
-	struct TastyState *restrict head_state;
+	const void *restrict *head_state;
 
 	const size_t length_pattern = string_length(pattern);
 
@@ -15,7 +15,7 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 
 	/* allocate stack of state nodes, init all pointers to NULL */
 	head_state = calloc(length_pattern,
-			    sizeof(struct TastyState *) * TASTY_STATE_LENGTH);
+			    sizeof(const void *restrict) * TASTY_STATE_LENGTH);
 
 	if (UNLIKELY(head_state == NULL_POINTER))
 		return TASTY_ERROR_OUT_OF_MEMORY;
@@ -23,7 +23,9 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 	/* 'matching' state set to not-necessarily valid point in memory, (will
 	 * never be accessed anyway) */
 	regex->initial	= head_state;
-	regex->matching = head_state + length_pattern;
+	regex->matching = (const void *restrict) (  head_state
+						  + (  length_pattern
+						     * TASTY_STATE_LENGTH));
 
 	return 0;
 }
@@ -39,8 +41,7 @@ tasty_regex_run(struct TastyRegex *const restrict regex,
 	struct TastyAccumulator *restrict head_acc;   /* list of live matches */
 	struct TastyAccumulator *restrict acc;	      /* list traversal var */
 	struct TastyAccumulator *restrict *acc_ptr;   /* list traversal var */
-	const struct TastyState *restrict next_state; /* next state */
-	const struct TastyState *restrict *next_step; /* next step */
+	const void *restrict next_step;		      /* next step from state */
 
 	const size_t length_string = string_length(string);
 
@@ -84,19 +85,23 @@ tasty_regex_run(struct TastyRegex *const restrict regex,
 		acc_ptr = &head_acc;
 		acc	= head_acc;
 		do {
-			next_step  = &acc->state->step[0];
-			/* next_state = next_step[token] || next_step['\0']; */
+			next_step = acc->state[token];
 
-			next_state = next_step[token];
+			/* no token match ? */
+			if (next_step == NULL) {
+				/* try wildcard */
+				next_step = acc->state['\0'];
 
-			/* no token match and wildcard not available ? */
-			if (next_state == NULL) {
-				/* delete state from list */
-				acc = acc->next;
-				*acc_ptr = acc;
+				if (next_step == NULL) {
+					/* delete acc from list and continue */
+					acc = acc->next;
+					*acc_ptr = acc;
+					continue;
+				}
+			}
 
 			/* regex entirely traversed (new match) ? */
-			} else if (next_state == regex->matching) {
+			if (next_step == regex->matching) {
 				/* update match interval */
 				match->from  = acc->match_from;
 				match->until = string;
@@ -107,10 +112,10 @@ tasty_regex_run(struct TastyRegex *const restrict regex,
 				acc = acc->next;
 				*acc_ptr = acc;
 
-			/* token match or wildcard ? */
+			/* token match, next_step is a state node */
 			} else {
 				/* update accumulator state */
-				acc->state = next_state;
+				acc->state = (const void *restrict *) next_step;
 
 				/* process next accumlated matching state */
 				acc_ptr = &acc->next;

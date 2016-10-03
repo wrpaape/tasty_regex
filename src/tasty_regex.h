@@ -51,14 +51,12 @@ struct TastyMatchInterval {
 /* }; */
 
 struct TastyRegex {
-	struct TastyState *restrict initial;
-
 	const void *restrict *initial;
-	const struct TastyState *restrict matching;
+	const void *restrict matching;
 };
 
 struct TastyAccumulator {
-	const struct TastyState *state;	 /* currently matching regex */
+	const void *restrict *state;	 /* currently matching regex */
 	struct TastyAccumulator *next;	 /* next parallel matching state */
 	const unsigned char *match_from; /* beginning of string match */
 };
@@ -78,7 +76,7 @@ tasty_regex_run(struct TastyRegex *const restrict regex,
 inline void
 tasty_regex_free(struct TastyRegex *const restrict regex)
 {
-	free(regex->initial);
+	free((void *) regex->initial);
 }
 
 
