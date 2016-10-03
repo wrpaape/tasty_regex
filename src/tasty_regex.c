@@ -15,31 +15,32 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 
 	/* allocate stack of state nodes, init all pointers to NULL */
 	head_state = calloc(length_pattern,
-		      sizeof(struct TastyState));
+			    sizeof(struct TastyState *) * TASTY_STATE_LENGTH);
 
 	if (UNLIKELY(head_state == NULL_POINTER))
 		return TASTY_ERROR_OUT_OF_MEMORY;
 
 	/* 'matching' state set to not-necessarily valid point in memory, (will
 	 * never be accessed anyway) */
-	regex->start	= head_state;
+	regex->initial	= head_state;
 	regex->matching = head_state + length_pattern;
 
 	return 0;
 }
+
 
 int
 tasty_regex_run(struct TastyRegex *const restrict regex,
 		struct TastyMatchInterval *const restrict matches,
 		const unsigned char *restrict string)
 {
-	struct TastyMatch *restrict match;	     /* free nodes */
-	struct TastyAccumulator *restrict acc_alloc; /* free nodes */
-	struct TastyAccumulator *restrict head_acc;  /* list of live matches */
-	struct TastyAccumulator *restrict acc;	     /* list traversal var */
-	struct TastyState *restrict state;	     /* current state */
-	struct TastyState *restrict next_state;	     /* next state */
-	struct TastyState **restrict init_step;	     /* jump from init state */
+	struct TastyMatch *restrict match;	      /* free nodes */
+	struct TastyAccumulator *restrict acc_alloc;  /* free nodes */
+	struct TastyAccumulator *restrict head_acc;   /* list of live matches */
+	struct TastyAccumulator *restrict acc;	      /* list traversal var */
+	struct TastyAccumulator *restrict *acc_ptr;   /* list traversal var */
+	const struct TastyState *restrict next_state; /* next state */
+	const struct TastyState *restrict *next_step; /* next step */
 
 	const size_t length_string = string_length(string);
 
@@ -61,27 +62,63 @@ tasty_regex_run(struct TastyRegex *const restrict regex,
 
 	matches->from = match;
 
+	acc_alloc = accumulators;
+	head_acc  = NULL;
 
-	while (1) {
-		/* tranverse string until match with first state */
-		state = regex->start;
+	/* step through each character of string
+	 * ────────────────────────────────────────────────────────────────── */
+	for (unsigned char token = *string; token != '\0'; token = *string) {
+		/* push initial state into list of accumulators
+		 * ────────────────────────────────────────────────────────── */
+		acc_alloc->state      = regex->initial;
+		acc_alloc->next	      = head_acc;
+		acc_alloc->match_from = string;
 
-		while (1) {
-			if ((*string) == '\0')
-				goto STRING_EXHAUSTED;
+		++string; /* increment string */
 
-			next_state = state->step[*string];
+		head_acc = acc_alloc;
+		++acc_alloc;
 
+		/* process accumulated matching states
+		 * ────────────────────────────────────────────────────────── */
+		acc_ptr = &head_acc;
+		acc	= head_acc;
+		do {
+			next_step  = &acc->state->step[0];
+			/* next_state = next_step[token] || next_step['\0']; */
 
+			next_state = next_step[token];
 
-			++string;
-		}
+			/* no token match and wildcard not available ? */
+			if (next_state == NULL) {
+				/* delete state from list */
+				acc = acc->next;
+				*acc_ptr = acc;
 
+			/* regex entirely traversed (new match) ? */
+			} else if (next_state == regex->matching) {
+				/* update match interval */
+				match->from  = acc->match_from;
+				match->until = string;
 
+				++match;
+
+				/* delete state from list */
+				acc = acc->next;
+				*acc_ptr = acc;
+
+			/* token match or wildcard ? */
+			} else {
+				/* update accumulator state */
+				acc->state = next_state;
+
+				/* process next accumlated matching state */
+				acc_ptr = &acc->next;
+				acc = acc->next;
+			}
+		} while (acc != NULL);
 	}
 
-
-STRING_EXHAUSTED:
 	matches->until = match;
 
 	free(accumulators);
@@ -98,9 +135,9 @@ tasty_match_interval_free(struct TastyMatchInterval *const restrict matches);
 /* helper functions
  * ────────────────────────────────────────────────────────────────────────── */
 static inline size_t
-string_length(const char *const restrict string)
+string_length(const unsigned char *const restrict string)
 {
-	register const char *restrict until = string;
+	register const unsigned char *restrict until = string;
 
 	while (*until != '\0')
 		++until;

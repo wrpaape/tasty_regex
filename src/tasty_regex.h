@@ -26,6 +26,7 @@ extern "C" {
 #define LIKELY(BOOL)   __builtin_expect(BOOL, 1)
 #define UNLIKELY(BOOL) __builtin_expect(BOOL, 0)
 
+#define TASTY_STATE_LENGTH (UCHAR_MAX + 1)
 
 /* error macros
  * ────────────────────────────────────────────────────────────────────────── */
@@ -45,13 +46,14 @@ struct TastyMatchInterval {
 	struct TastyMatch *restrict until;
 };
 
-struct TastyState {
-	/* step['\0'] reserved for skip step (wildcards) */
-	struct TastyState *step[UCHAR_MAX + 1]; /* jump forward to next state */
-};
+/* struct TastyState { */
+/* 	const struct TastyState *restrict *step; /1* jump forward to next state *1/ */
+/* }; */
 
 struct TastyRegex {
-	struct TastyState *restrict start;
+	struct TastyState *restrict initial;
+
+	const void *restrict *initial;
 	const struct TastyState *restrict matching;
 };
 
@@ -68,7 +70,7 @@ int
 tasty_regex_compile(struct TastyRegex *const restrict regex,
 		    const unsigned char *restrict pattern);
 
-void
+int
 tasty_regex_run(struct TastyRegex *const restrict regex,
 		struct TastyMatchInterval *const restrict matches,
 		const unsigned char *restrict string);
@@ -76,7 +78,7 @@ tasty_regex_run(struct TastyRegex *const restrict regex,
 inline void
 tasty_regex_free(struct TastyRegex *const restrict regex)
 {
-	free(regex->start);
+	free(regex->initial);
 }
 
 
@@ -89,7 +91,7 @@ tasty_match_interval_free(struct TastyMatchInterval *const restrict matches)
 /* helper functions
  * ────────────────────────────────────────────────────────────────────────── */
 static inline size_t
-string_length(const char *const restrict string);
+string_length(const unsigned char *const restrict string);
 
 
 #ifdef __cplusplus /* close 'extern "C" {' */
