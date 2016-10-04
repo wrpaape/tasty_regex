@@ -6,46 +6,46 @@ int
 tasty_regex_compile(struct TastyRegex *const restrict regex,
 		    const unsigned char *restrict pattern)
 {
-	const void *restrict *state_alloc;
-	const void *restrict *state;
-	struct TastyChunk *restrict chunk_stack;
+	/* const void *restrict *state_alloc; */
+	/* const void *restrict *state; */
+	/* struct TastyChunk *restrict chunk_stack; */
 
-	const size_t length_pattern = string_length(pattern);
+	/* const size_t length_pattern = string_length(pattern); */
 
-	if (length_pattern == 0lu)
-		return TASTY_ERROR_EMPTY_PATTERN;
+	/* if (length_pattern == 0lu) */
+	/* 	return TASTY_ERROR_EMPTY_PATTERN; */
 
-	/* allocate stack of chunks (worst case (N + 1) / 2 nodes deep when
-	 * pattern like "a|b|c|d" */
-	struct TastyChunk *const restrict chunk_base
-	= malloc(sizeof(struct TastyChunk) * ((length_pattern + 1lu) / 2lu));
+	/* /1* allocate stack of chunks (worst case (N + 1) / 2 nodes deep when */
+	/*  * pattern like "a|b|c|d" *1/ */
+	/* struct TastyChunk *const restrict chunk_base */
+	/* = malloc(sizeof(struct TastyChunk) * ((length_pattern + 1lu) / 2lu)); */
 
-	if (UNLIKELY(chunk_base == NULL_POINTER))
-		return TASTY_ERROR_OUT_OF_MEMORY;
+	/* if (UNLIKELY(chunk_base == NULL_POINTER)) */
+	/* 	return TASTY_ERROR_OUT_OF_MEMORY; */
 
-	/* allocate worst case length_pattern count of state nodes, allocate all
-	 * pointers to NULL (i.e. no match) */
-	state_alloc = calloc(length_pattern,
-			     sizeof(union TastyState));
+	/* /1* allocate worst case length_pattern count of state nodes, allocate all */
+	/*  * pointers to NULL (i.e. no match) *1/ */
+	/* state_alloc = calloc(length_pattern, */
+	/* 		     sizeof(union TastyState)); */
 
-	if (UNLIKELY(state_alloc == NULL_POINTER)) {
-		free(chunk_base);
-		return TASTY_ERROR_OUT_OF_MEMORY;
-	}
+	/* if (UNLIKELY(state_alloc == NULL_POINTER)) { */
+	/* 	free(chunk_base); */
+	/* 	return TASTY_ERROR_OUT_OF_MEMORY; */
+	/* } */
 
-	regex->initial	= state_alloc;
+	/* regex->initial	= state_alloc; */
 
-	chunk	    = chunk_base;
-	chunk_stack = chunk + 1l;
+	/* chunk	    = chunk_base; */
+	/* chunk_stack = chunk + 1l; */
 
 
-	while (1) {
+	/* regex->matching = state_alloc; */
 
-	}
+	/* free(chunk_base); */
 
-	regex->matching = state_alloc;
 
-	free(chunk_base);
+	char token;
+	char next_token;
 
 	return 0;
 }
@@ -56,99 +56,99 @@ tasty_regex_run(struct TastyRegex *const restrict regex,
 		struct TastyMatchInterval *const restrict matches,
 		const unsigned char *restrict string)
 {
-	struct TastyMatch *restrict match;	      /* free nodes */
-	struct TastyAccumulator *restrict acc_alloc;  /* free nodes */
-	struct TastyAccumulator *restrict head_acc;   /* list of live matches */
-	struct TastyAccumulator *restrict acc;	      /* list traversal var */
-	struct TastyAccumulator *restrict *acc_ptr;   /* list traversal var */
-	const void *restrict next_step;		      /* next step from state */
+	/* struct TastyMatch *restrict match;	      /1* free nodes *1/ */
+	/* struct TastyAccumulator *restrict acc_alloc;  /1* free nodes *1/ */
+	/* struct TastyAccumulator *restrict head_acc;   /1* list of live matches *1/ */
+	/* struct TastyAccumulator *restrict acc;	      /1* list traversal var *1/ */
+	/* struct TastyAccumulator *restrict *acc_ptr;   /1* list traversal var *1/ */
+	/* const void *restrict next_step;		      /1* next step from state *1/ */
 
-	const size_t length_string = string_length(string);
+	/* const size_t length_string = string_length(string); */
 
-	/* at most length(string) matches */
-	match = malloc(sizeof(struct TastyMatch) * length_string);
+	/* /1* at most length(string) matches *1/ */
+	/* match = malloc(sizeof(struct TastyMatch) * length_string); */
 
-	if (UNLIKELY(match == NULL_POINTER))
-		return TASTY_ERROR_OUT_OF_MEMORY;
+	/* if (UNLIKELY(match == NULL_POINTER)) */
+	/* 	return TASTY_ERROR_OUT_OF_MEMORY; */
 
-	/* at most length(string) parallel matching states to keep track of
-	 * (free before return) */
-	struct TastyAccumulator *const restrict accumulators
-	= malloc(sizeof(struct TastyAccumulator) * length_string);
+	/* /1* at most length(string) parallel matching states to keep track of */
+	/*  * (free before return) *1/ */
+	/* struct TastyAccumulator *const restrict accumulators */
+	/* = malloc(sizeof(struct TastyAccumulator) * length_string); */
 
-	if (UNLIKELY(accumulators == NULL_POINTER)) {
-		free(match);
-		return TASTY_ERROR_OUT_OF_MEMORY;
-	}
+	/* if (UNLIKELY(accumulators == NULL_POINTER)) { */
+	/* 	free(match); */
+	/* 	return TASTY_ERROR_OUT_OF_MEMORY; */
+	/* } */
 
-	matches->from = match;
+	/* matches->from = match; */
 
-	acc_alloc = accumulators;
-	head_acc  = NULL_POINTER;
+	/* acc_alloc = accumulators; */
+	/* head_acc  = NULL_POINTER; */
 
-	/* step through each character of string
-	 * ────────────────────────────────────────────────────────────────── */
-	for (unsigned char token = *string; token != '\0'; token = *string) {
-		/* push initial state into list of accumulators
-		 * ────────────────────────────────────────────────────────── */
-		acc_alloc->state      = regex->initial;
-		acc_alloc->next	      = head_acc;
-		acc_alloc->match_from = string;
+	/* /1* step through each character of string */
+	/*  * ────────────────────────────────────────────────────────────────── *1/ */
+	/* for (unsigned char token = *string; token != '\0'; token = *string) { */
+	/* 	/1* push initial state into list of accumulators */
+	/* 	 * ────────────────────────────────────────────────────────── *1/ */
+	/* 	acc_alloc->state      = regex->initial; */
+	/* 	acc_alloc->next	      = head_acc; */
+	/* 	acc_alloc->match_from = string; */
 
-		++string; /* === increment string here === */
+	/* 	++string; /1* === increment string here === *1/ */
 
-		head_acc = acc_alloc;
-		++acc_alloc;
+	/* 	head_acc = acc_alloc; */
+	/* 	++acc_alloc; */
 
-		/* process accumulated matching states
-		 * ────────────────────────────────────────────────────────── */
-		acc_ptr = &head_acc;
-		acc	= head_acc;
-		do {
-			next_step = acc->state[token];
+	/* 	/1* process accumulated matching states */
+	/* 	 * ────────────────────────────────────────────────────────── *1/ */
+	/* 	acc_ptr = &head_acc; */
+	/* 	acc	= head_acc; */
+	/* 	do { */
+	/* 		next_step = acc->state[token]; */
 
-			/* no token match ? */
-			if (next_step == NULL_POINTER) {
+	/* 		/1* no token match ? *1/ */
+	/* 		if (next_step == NULL_POINTER) { */
 
-				/* TODO: traverse wildcard route */
-				/* try wildcard */
-				next_step = acc->state['\0'];
+	/* 			/1* TODO: traverse wildcard route *1/ */
+	/* 			/1* try wildcard *1/ */
+	/* 			next_step = acc->state['\0']; */
 
-				if (next_step == NULL_POINTER) {
-					/* delete acc from list and continue */
-					acc	 = acc->next;
-					*acc_ptr = acc;
-					continue;
-				}
-			}
+	/* 			if (next_step == NULL_POINTER) { */
+	/* 				/1* delete acc from list and continue *1/ */
+	/* 				acc	 = acc->next; */
+	/* 				*acc_ptr = acc; */
+	/* 				continue; */
+	/* 			} */
+	/* 		} */
 
-			/* regex entirely traversed (new match) ? */
-			if (next_step == regex->matching) {
-				/* update match interval */
-				match->from  = acc->match_from;
-				match->until = string;
+	/* 		/1* regex entirely traversed (new match) ? *1/ */
+	/* 		if (next_step == regex->matching) { */
+	/* 			/1* update match interval *1/ */
+	/* 			match->from  = acc->match_from; */
+	/* 			match->until = string; */
 
-				++match;
+	/* 			++match; */
 
-				/* delete acc from list */
-				acc	 = acc->next;
-				*acc_ptr = acc;
+	/* 			/1* delete acc from list *1/ */
+	/* 			acc	 = acc->next; */
+	/* 			*acc_ptr = acc; */
 
-			/* token match, next_step is a state node (2x ptr) */
-			} else {
-				/* update accumulator state */
-				acc->state = (const void *restrict *) next_step;
+	/* 		/1* token match, next_step is a state node (2x ptr) *1/ */
+	/* 		} else { */
+	/* 			/1* update accumulator state *1/ */
+	/* 			acc->state = (const void *restrict *) next_step; */
 
-				/* process next accumlated matching state */
-				acc_ptr = &acc->next;
-				acc	= *acc_ptr;
-			}
-		} while (acc != NULL_POINTER);
-	}
+	/* 			/1* process next accumlated matching state *1/ */
+	/* 			acc_ptr = &acc->next; */
+	/* 			acc	= *acc_ptr; */
+	/* 		} */
+	/* 	} while (acc != NULL_POINTER); */
+	/* } */
 
-	matches->until = match;
+	/* matches->until = match; */
 
-	free(accumulators);
+	/* free(accumulators); */
 	return 0;
 }
 
@@ -182,13 +182,48 @@ patch_states(struct TastyPatch *restrict patch,
 	} while (patch != NULL_POINTER);
 }
 
+inline void
+push_wild_patches(struct TastyPatch *restrict *const restrict patch_list,
+		  struct TastyPatch *restrict *const restrict patch_alloc,
+		  union TastyState *const restrict state)
+{
+	struct TastyPatch *restrict patch;
+	struct TastyPatch *restrict next_patch;
+	const union TastyState **restrict state_from;
+
+	/* init list traversal vars */
+	next_patch = *patch_list;
+	patch	   = *patch_alloc;
+
+	/* starting from first non-NULL match */
+	state_from = &state->step[1];
+
+	const union TastyState *const restrict *restrict state_until
+	= state_from + UCHAR_MAX;
+
+	do {
+		patch->state = state_from;
+		patch->next  = next_patch;
+
+		next_patch = patch;
+		++patch;
+
+		++state_from;
+	} while (state_from < state_until);
+
+	/* update head of list, alloc */
+	*patch_list  = next_patch;
+	*patch_alloc = patch;
+}
+
+
 /* fundamental state elements
  * ────────────────────────────────────────────────────────────────────────── */
 inline union TastyState *
-tasty_state_match_one(union TastyState *restrict *state_alloc,
-		      struct TastyPatch *restrict *patch_alloc,
-		      struct TastyPatch *restrict *patch_list,
-		      const unsigned char match)
+match_one(union TastyState *restrict *const restrict state_alloc,
+	  struct TastyPatch *restrict *const restrict patch_alloc,
+	  struct TastyPatch *restrict *const restrict patch_list,
+	  const unsigned char match)
 {
 	/* pop state node */
 	union TastyState *const restrict state = *state_alloc;
@@ -210,10 +245,10 @@ tasty_state_match_one(union TastyState *restrict *state_alloc,
 }
 
 inline union TastyState *
-tasty_state_match_zero_or_one(union TastyState *restrict *state_alloc,
-			      struct TastyPatch *restrict *patch_alloc,
-			      struct TastyPatch *restrict *patch_list,
-			      const unsigned char match)
+match_zero_or_one(union TastyState *restrict *const restrict state_alloc,
+		  struct TastyPatch *restrict *const restrict patch_alloc,
+		  struct TastyPatch *restrict *const restrict patch_list,
+		  const unsigned char match)
 {
 	struct TastyPatch *restrict patch;
 
@@ -225,7 +260,7 @@ tasty_state_match_zero_or_one(union TastyState *restrict *state_alloc,
 	 patch = *patch_alloc;
 	++(*patch_alloc);
 
-	/* record wildcard pointer needing to be set */
+	/* record skip pointer needing to be set */
 	patch->state = &state->skip;
 
 	/* push patch into head of patch_list */
@@ -248,10 +283,10 @@ tasty_state_match_zero_or_one(union TastyState *restrict *state_alloc,
 }
 
 inline union TastyState *
-tasty_state_match_zero_or_more(union TastyState *restrict *state_alloc,
-			       struct TastyPatch *restrict *patch_alloc,
-			       struct TastyPatch *restrict *patch_list,
-			       const unsigned char match)
+match_zero_or_more(union TastyState *restrict *const restrict state_alloc,
+		   struct TastyPatch *restrict *const restrict patch_alloc,
+		   struct TastyPatch *restrict *const restrict patch_list,
+		   const unsigned char match)
 {
 	/* pop state node */
 	union TastyState *const restrict state = *state_alloc;
@@ -261,7 +296,7 @@ tasty_state_match_zero_or_more(union TastyState *restrict *state_alloc,
 	struct TastyPatch *const restrict patch = *patch_alloc;
 	++(*patch_alloc);
 
-	/* record wildcard pointer needing to be set */
+	/* record skip pointer needing to be set */
 	patch->state = &state->skip;
 
 	/* push patch into head of patch_list */
@@ -276,10 +311,10 @@ tasty_state_match_zero_or_more(union TastyState *restrict *state_alloc,
 }
 
 static inline union TastyState *
-tasty_state_match_one_or_more(union TastyState *restrict *state_alloc,
-			      struct TastyPatch *restrict *patch_alloc,
-			      struct TastyPatch *restrict *patch_list,
-			      const unsigned char match)
+match_one_or_more(union TastyState *restrict *const restrict state_alloc,
+		  struct TastyPatch *restrict *const restrict patch_alloc,
+		  struct TastyPatch *restrict *const restrict patch_list,
+		  const unsigned char match)
 {
 	struct TastyPatch *restrict patch;
 
@@ -295,7 +330,7 @@ tasty_state_match_one_or_more(union TastyState *restrict *state_alloc,
 	 patch = *patch_alloc;
 	++(*patch_alloc);
 
-	/* record wildcard pointer needing to be set */
+	/* record skip pointer needing to be set */
 	patch->state = &state_zero_or_more->skip;
 
 	/* push patch into head of patch_list */

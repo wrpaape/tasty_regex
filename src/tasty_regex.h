@@ -48,7 +48,7 @@ struct TastyMatchInterval {
 };
 
 
-/* NFA state node, step['\0'] reserved for 'skip' field (no explicit match) */
+/* DFA state node, step['\0'] reserved for 'skip' field (no explicit match) */
 union TastyState {
 	const union TastyState *step[UCHAR_MAX + 1]; /* jump tbl for non-'\0' */
 	const union TastyState *skip;		     /* no match option */
@@ -60,10 +60,13 @@ struct TastyPatch {
 	struct TastyPatch *next;
 };
 
-/* NFA chunks, used temporarily in compilation */
+/* DFA chunks, used temporarily in compilation */
 struct TastyChunk {
+	const union TastyState *start;
+	struct TastyPatch *patch_list;
 };
 
+/* complete DFA */
 struct TastyRegex {
 	const union TastyState *restrict initial;
 	const union TastyState *restrict matching;
@@ -109,31 +112,36 @@ static inline void
 patch_states(struct TastyPatch *restrict patch,
 	     const union TastyState *const restrict state);
 
+static inline void
+push_wild_patches(struct TastyPatch *restrict *const restrict patch_list,
+		  struct TastyPatch *restrict *const restrict patch_alloc,
+		  union TastyState *const restrict state);
+
 /* fundamental state elements
  * ────────────────────────────────────────────────────────────────────────── */
 static inline union TastyState *
-tasty_state_match_one(union TastyState *restrict *state_alloc,
-		      struct TastyPatch *restrict *patch_alloc,
-		      struct TastyPatch *restrict *patch_list,
-		      const unsigned char match);
+match_one(union TastyState *restrict *const restrict state_alloc,
+	  struct TastyPatch *restrict *const restrict patch_alloc,
+	  struct TastyPatch *restrict *const restrict patch_list,
+	  const unsigned char match);
 
 static inline union TastyState *
-tasty_state_match_zero_or_one(union TastyState *restrict *state_alloc,
-			      struct TastyPatch *restrict *patch_alloc,
-			      struct TastyPatch *restrict *patch_list,
-			      const unsigned char match);
+match_zero_or_one(union TastyState *restrict *const restrict state_alloc,
+		  struct TastyPatch *restrict *const restrict patch_alloc,
+		  struct TastyPatch *restrict *const restrict patch_list,
+		  const unsigned char match);
 
 static inline union TastyState *
-tasty_state_match_zero_or_more(union TastyState *restrict *state_alloc,
-			       struct TastyPatch *restrict *patch_alloc,
-			       struct TastyPatch *restrict *patch_list,
-			       const unsigned char match);
+match_zero_or_more(union TastyState *restrict *const restrict state_alloc,
+		   struct TastyPatch *restrict *const restrict patch_alloc,
+		   struct TastyPatch *restrict *const restrict patch_list,
+		   const unsigned char match);
 
 static inline union TastyState *
-tasty_state_match_one_or_more(union TastyState *restrict *state_alloc,
-			      struct TastyPatch *restrict *patch_alloc,
-			      struct TastyPatch *restrict *patch_list,
-			      const unsigned char match);
+match_one_or_more(union TastyState *restrict *const restrict state_alloc,
+		  struct TastyPatch *restrict *const restrict patch_alloc,
+		  struct TastyPatch *restrict *const restrict patch_list,
+		  const unsigned char match);
 #ifdef __cplusplus /* close 'extern "C" {' */
 }
 #endif /* ifdef __cplusplus */
