@@ -47,19 +47,20 @@ struct TastyMatchInterval {
 	struct TastyMatch *restrict until;
 };
 
-/* struct TastyState { */
-/* 	const struct TastyState *restrict *step; /1* jump forward to next state *1/ */
-/* }; */
+
+/* NFA state node, step['\0'] reserved for 'skip' field (no explicit match) */
+union TastyState {
+	const union TastyState *step[UCHAR_MAX + 1]; /* jump tbl for non-'\0' */
+	const union TastyState *skip;		     /* no match option */
+};
 
 /* NFA chunks, used temporarily in compilation */
 struct TastyChunk {
-	const void *restrict *from;
-	const void *restrict *upto;
 };
 
 struct TastyRegex {
-	const void *restrict *initial;
-	const void *restrict matching;
+	const union TastyState *restrict initial;
+	const union TastyState *restrict matching;
 };
 
 struct TastyAccumulator {
