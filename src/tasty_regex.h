@@ -54,6 +54,12 @@ union TastyState {
 	const union TastyState *skip;		     /* no match option */
 };
 
+/* keep list of trailing pointers needing to be set to next state */
+struct TastyPatch {
+	const union TastyState **state;
+	struct TastyPatch *next;
+};
+
 /* NFA chunks, used temporarily in compilation */
 struct TastyChunk {
 };
@@ -99,7 +105,35 @@ tasty_match_interval_free(struct TastyMatchInterval *const restrict matches)
 static inline size_t
 string_length(const unsigned char *const restrict string);
 
+static inline void
+patch_states(struct TastyPatch *restrict patch,
+	     const union TastyState *const restrict state);
 
+/* fundamental state elements
+ * ────────────────────────────────────────────────────────────────────────── */
+static inline union TastyState *
+tasty_state_match_one(union TastyState *restrict *state_alloc,
+		      struct TastyPatch *restrict *patch_alloc,
+		      struct TastyPatch *restrict *patch_list,
+		      const unsigned char match);
+
+static inline union TastyState *
+tasty_state_match_zero_or_one(union TastyState *restrict *state_alloc,
+			      struct TastyPatch *restrict *patch_alloc,
+			      struct TastyPatch *restrict *patch_list,
+			      const unsigned char match);
+
+static inline union TastyState *
+tasty_state_match_zero_or_more(union TastyState *restrict *state_alloc,
+			       struct TastyPatch *restrict *patch_alloc,
+			       struct TastyPatch *restrict *patch_list,
+			       const unsigned char match);
+
+static inline union TastyState *
+tasty_state_match_one_or_more(union TastyState *restrict *state_alloc,
+			      struct TastyPatch *restrict *patch_alloc,
+			      struct TastyPatch *restrict *patch_list,
+			      const unsigned char match);
 #ifdef __cplusplus /* close 'extern "C" {' */
 }
 #endif /* ifdef __cplusplus */
