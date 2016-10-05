@@ -30,15 +30,15 @@ extern "C" {
 
 /* error macros
  * ────────────────────────────────────────────────────────────────────────── */
-#define TASTY_ERROR_EMPTY_PATTERN	1	/* 'pattern' is "" */
-#define TASTY_ERROR_OUT_OF_MEMORY	2	/* failed to allocate memory */
-#define TASTY_ERROR_UNBALANCED_PARENTHS 3	/* parentheses not balanced */
+#define TASTY_ERROR_OUT_OF_MEMORY	   1 /* failed to allocate memory */
+#define TASTY_ERROR_EMPTY_PATTERN	   2 /* 'pattern' is "" */
+#define TASTY_ERROR_UNBALANCED_PARENTHESES 3 /* parentheses not balanced */
 
 
 /* typedefs, struct declarations
  * ────────────────────────────────────────────────────────────────────────── */
 struct TastyMatch {
-	unsigned char *restrict from;
+	const unsigned char *restrict from;
 	const unsigned char *restrict until;
 };
 
@@ -73,7 +73,7 @@ struct TastyRegex {
 };
 
 struct TastyAccumulator {
-	const void *restrict *state;	 /* currently matching regex */
+	const union TastyState *state;	 /* currently matching regex */
 	struct TastyAccumulator *next;	 /* next parallel matching state */
 	const unsigned char *match_from; /* beginning of string match */
 };
@@ -116,6 +116,31 @@ static inline void
 push_wild_patches(struct TastyPatch *restrict *const restrict patch_list,
 		  struct TastyPatch *restrict *const restrict patch_alloc,
 		  union TastyState *const restrict state);
+
+
+static inline void
+push_next_acc(struct TastyAccumulator *restrict *const restrict acc_list,
+	      struct TastyAccumulator *restrict *const restrict acc_alloc,
+	      const struct TastyRegex *const restrict regex,
+	      const unsigned char *const restrict string);
+
+static inline void
+push_match(struct TastyMatch *restrict *const restrict match_alloc,
+	   const unsigned char *const restrict from,
+	   const unsigned char *const restrict until);
+
+static inline void
+acc_list_process(struct TastyAccumulator *restrict *restrict acc_ptr,
+		 struct TastyMatch *restrict *const restrict match_alloc,
+		 const union TastyState *const restrict matching,
+		 const unsigned char *const restrict string);
+
+static inline void
+acc_list_final_scan(struct TastyAccumulator *restrict acc,
+		    struct TastyMatch *restrict *const restrict match_alloc,
+		    const union TastyState *const restrict matching,
+		    const unsigned char *const restrict string);
+
 
 /* fundamental state elements
  * ────────────────────────────────────────────────────────────────────────── */
