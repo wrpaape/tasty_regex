@@ -38,7 +38,7 @@ extern "C" {
 /* typedefs, struct declarations
  * ────────────────────────────────────────────────────────────────────────── */
 struct TastyMatch {
-	const unsigned char *restrict from;
+	unsigned char *restrict from;
 	const unsigned char *restrict until;
 };
 
