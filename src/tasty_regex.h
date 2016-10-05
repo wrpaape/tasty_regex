@@ -2,6 +2,8 @@
 #define TASTY_REGEX_TASTY_REGEX_H_
 #ifdef __cplusplus /* ensure C linkage */
 extern "C" {
+#	undef restrict
+#	define restrict __restrict__ /* use c++ compatible '__restrict__' */
 #endif /* ifdef __cplusplus */
 
 
@@ -9,14 +11,6 @@ extern "C" {
  * ────────────────────────────────────────────────────────────────────────── */
 #include <stdlib.h>	/* size_t, m|calloc, free */
 #include <limits.h>	/* UCHAR_MAX */
-
-
-/* helper macros
- * ────────────────────────────────────────────────────────────────────────── */
-#define LIKELY(BOOL)   __builtin_expect(BOOL, 1)
-#define UNLIKELY(BOOL) __builtin_expect(BOOL, 0)
-
-#define TASTY_STATE_LENGTH (UCHAR_MAX + 1)
 
 /* error macros
  * ────────────────────────────────────────────────────────────────────────── */
@@ -42,8 +36,8 @@ struct TastyMatchInterval {
 
 /* DFA state node, step['\0'] reserved for 'skip' field (no explicit match) */
 union TastyState {
-	const union TastyState *step[UCHAR_MAX + 1]; /* jump tbl for non-'\0' */
-	const union TastyState *skip;		     /* no match option */
+	union TastyState *step[UCHAR_MAX + 1]; /* jump tbl for non-'\0' */
+	union TastyState *skip;		     /* no match option */
 };
 
 /* complete DFA */
@@ -75,7 +69,7 @@ tasty_regex_free(struct TastyRegex *const restrict regex)
 inline void
 tasty_match_interval_free(struct TastyMatchInterval *const restrict matches)
 {
-	free(matches->from);
+	free((void *) matches->from);
 }
 
 #ifdef __cplusplus /* close 'extern "C" {' */

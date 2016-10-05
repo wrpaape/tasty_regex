@@ -1,11 +1,17 @@
 #include "tasty_regex.h"
 
-#undef NULL_POINTER
 #ifdef __cplusplus
 #	define NULL_POINTER nullptr /* use c++ null pointer constant */
 #else
-#	define NULL_POINTER NULL /* use traditional c null pointer macro */
+#	define NULL_POINTER NULL    /* use traditional c null pointer macro */
 #endif /* ifdef __cplusplus */
+
+
+/* helper macros
+ * ────────────────────────────────────────────────────────────────────────── */
+#define LIKELY(BOOL)   __builtin_expect(BOOL, 1)
+#define UNLIKELY(BOOL) __builtin_expect(BOOL, 0)
+
 
 /* typedefs, struct declarations
  * ────────────────────────────────────────────────────────────────────────── */
@@ -15,12 +21,21 @@ struct TastyPatch {
 	struct TastyPatch *next;
 };
 
-/* DFA chunks, used temporarily in compilation */
-struct TastyChunk {
-	const union TastyState *start;
-	struct TastyPatch *patch_list;
+struct TastyPatchList {
+	struct TastyPatch *restrict head;
+	struct TastyPatch *restrict *end_ptr;
 };
 
+/* DFA chunks, used temporarily in compilation */
+struct TastyChunk {
+	union TastyState *start;
+	struct TastyPatchList patches;
+};
+
+struct TastyOrNode {
+	struct TastyChunk *chunk;
+	struct TastyOrNode *next;
+};
 
 /* used for tracking accumulating matches during run */
 struct TastyAccumulator {
@@ -28,7 +43,6 @@ struct TastyAccumulator {
 	struct TastyAccumulator *next;	 /* next parallel matching state */
 	const unsigned char *match_from; /* beginning of string match */
 };
-
 
 
 /* helper functions
@@ -44,6 +58,8 @@ string_length(const unsigned char *const restrict string)
 	return until - string;
 }
 
+/* compile helper functions
+ * ────────────────────────────────────────────────────────────────────────── */
 static inline void
 patch_states(struct TastyPatch *restrict patch,
 	     const union TastyState *const restrict state)
@@ -52,6 +68,69 @@ patch_states(struct TastyPatch *restrict patch,
 		*(patch->state) = state;
 		patch = patch->next;
 	} while (patch != NULL_POINTER);
+}
+
+static inline void
+concat_patch_lists(struct TastyPatchList *const restrict patch_list1,
+		   struct TastyPatchList *const restrict patch_list2)
+{
+	*(patch_list1->end_ptr) = patch_list2->head;
+	patch_list1->end_ptr    = patch_list2->end_ptr;
+}
+
+static inline void
+merge_states(union TastyState *const restrict state1,
+	     union TastyState *const restrict state2)
+{
+	union TastyState *restrict *state1_from;
+	union TastyState *restrict *state2_from;
+
+	state1_from = &state1->skip;
+	state2_from = &state2->skip;
+
+	const union TastyState *const restrict *restrict state1_until
+	= state1_from + (UCHAR_MAX + 1l);
+
+	while (1) {
+
+		/* no conflict, merge state2's branch into state1 */
+		if (*state1_from == NULL_POINTER) {
+			*state1_from = *state2_from;
+
+		/* fork on same match (NFA), need to flatten branch */
+		} else if (*state2_from != NULL_POINTER) {
+			merge_states(*state1_from,
+				     *state2_from);
+		}
+
+		++state1_from;
+		if (state1_from == state1_until)
+			return;
+
+		++state2_from;
+	}
+}
+
+
+static inline void
+merge_chunks(struct TastyChunk *const restrict chunk1,
+	     struct TastyChunk *const restrict chunk2)
+{
+}
+
+static inline void
+concat_chunks(struct TastyChunk *const restrict chunk1,
+	      struct TastyChunk *const restrict chunk2)
+{
+	patch_states(chunk1->patches.head,
+		     chunk2->start);
+
+	chunk1->patches = chunk2->patches;
+}
+
+static inline void
+merge_or_list(struct TastyOrNode *restrict or_list)
+{
 }
 
 static inline void
@@ -88,9 +167,8 @@ push_wild_patches(struct TastyPatch *restrict *const restrict patch_list,
 	*patch_alloc = patch;
 }
 
-
-
-
+/* run helper functions
+ * ────────────────────────────────────────────────────────────────────────── */
 static inline void
 push_next_acc(struct TastyAccumulator *restrict *const restrict acc_list,
 	      struct TastyAccumulator *restrict *const restrict acc_alloc,
@@ -133,6 +211,7 @@ push_next_acc(struct TastyAccumulator *restrict *const restrict acc_list,
 		}
 	}
 }
+
 
 static inline void
 push_match(struct TastyMatch *restrict *const restrict match_alloc,
