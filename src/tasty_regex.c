@@ -1,14 +1,15 @@
-#include "tasty_regex.h"
+/* external dependencies
+ * ────────────────────────────────────────────────────────────────────────── */
+#include "tasty_regex_utils.h"
 
+/* helper macros
+ * ────────────────────────────────────────────────────────────────────────── */
 #ifdef __cplusplus
 #	define NULL_POINTER nullptr /* use c++ null pointer constant */
 #else
 #	define NULL_POINTER NULL    /* use traditional c null pointer macro */
 #endif /* ifdef __cplusplus */
 
-
-/* helper macros
- * ────────────────────────────────────────────────────────────────────────── */
 #define TASTY_END_OF_CHUNK -1
 
 
@@ -641,7 +642,7 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 
 
 int
-tasty_regex_run(struct TastyRegex *const restrict regex,
+tasty_regex_run(const struct TastyRegex *const restrict regex,
 		struct TastyMatchInterval *const restrict matches,
 		const unsigned char *restrict string)
 {

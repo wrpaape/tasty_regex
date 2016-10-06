@@ -57,7 +57,7 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 		    const unsigned char *restrict pattern);
 
 int
-tasty_regex_run(struct TastyRegex *const restrict regex,
+tasty_regex_run(const struct TastyRegex *const restrict regex,
 		struct TastyMatchInterval *const restrict matches,
 		const unsigned char *restrict string);
 
