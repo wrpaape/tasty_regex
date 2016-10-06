@@ -9,9 +9,6 @@
 
 /* helper macros
  * ────────────────────────────────────────────────────────────────────────── */
-#define LIKELY(BOOL)   __builtin_expect(BOOL, 1)
-#define UNLIKELY(BOOL) __builtin_expect(BOOL, 0)
-
 #define TASTY_END_OF_CHUNK -1
 
 
@@ -55,16 +52,6 @@ struct TastyAccumulator {
 
 /* helper functions
  * ────────────────────────────────────────────────────────────────────────── */
-static inline size_t
-string_length(const unsigned char *const restrict string)
-{
-	register const unsigned char *restrict until = string;
-
-	while (*until != '\0')
-		++until;
-
-	return until - string;
-}
 
 /* compile helper functions
  * ────────────────────────────────────────────────────────────────────────── */
@@ -597,6 +584,8 @@ fetch_next_chunk(struct TastyChunk *const restrict chunk,
 	if (status != 0)
 		return status;
 
+
+	return 0;
 }
 
 
@@ -660,14 +649,14 @@ tasty_regex_run(struct TastyRegex *const restrict regex,
 	struct TastyAccumulator *restrict acc_alloc;
 	struct TastyAccumulator *restrict acc_list;
 
-	const size_t length_string = string_length(string);
-
 	/* want to ensure at least 1 non-'\0' char before start of walk */
-	if (length_string == 0lu) {
+	if (*string == '\0') {
 		matches->from  = NULL_POINTER;
 		matches->until = NULL_POINTER;
 		return 0;
 	}
+
+	const size_t length_string = nonempty_string_length(string);
 
 	/* at most N matches */
 	match_alloc = malloc(sizeof(struct TastyMatch) * length_string);
