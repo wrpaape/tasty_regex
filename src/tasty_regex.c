@@ -17,7 +17,7 @@
  * ────────────────────────────────────────────────────────────────────────── */
 /* for tracking unset loose ends of DFA states */
 struct TastyPatch {
-	const union TastyState **state;
+	union TastyState *restrict *state;
 	struct TastyPatch *next;
 };
 
@@ -37,12 +37,27 @@ struct TastyOrNode {
 	struct TastyOrNode *next;
 };
 
+
 /* used for tracking accumulating matches during run */
 struct TastyAccumulator {
 	const union TastyState *state;	 /* currently matching regex */
 	struct TastyAccumulator *next;	 /* next parallel matching state */
 	const unsigned char *match_from; /* beginning of string match */
 };
+
+
+/* global variables
+ * ────────────────────────────────────────────────────────────────────────── */
+static const bool valid_escape_map[UCHAR_MAX + 1] = {
+	['\\'] = true,
+	['+']  = true,
+	['?']  = true,
+	['(']  = true,
+	[')']  = true,
+	['.']  = true,
+	['|']  = true
+};
+
 
 
 /* helper functions
@@ -62,7 +77,7 @@ string_length(const unsigned char *const restrict string)
  * ────────────────────────────────────────────────────────────────────────── */
 static inline void
 patch_states(struct TastyPatch *restrict patch,
-	     const union TastyState *const restrict state)
+	     union TastyState *const restrict state)
 {
 	do {
 		*(patch->state) = state;
@@ -71,28 +86,27 @@ patch_states(struct TastyPatch *restrict patch,
 }
 
 static inline void
-concat_patch_lists(struct TastyPatchList *const restrict patch_list1,
-		   struct TastyPatchList *const restrict patch_list2)
+concat_patches(struct TastyPatchList *const restrict patches1,
+		   struct TastyPatchList *const restrict patches2)
 {
-	*(patch_list1->end_ptr) = patch_list2->head;
-	patch_list1->end_ptr    = patch_list2->end_ptr;
+	*(patches1->end_ptr) = patches2->head;
+	patches1->end_ptr    = patches2->end_ptr;
 }
 
 static inline void
 merge_states(union TastyState *const restrict state1,
 	     union TastyState *const restrict state2)
 {
-	union TastyState *restrict *state1_from;
-	union TastyState *restrict *state2_from;
+	union TastyState *restrict *restrict state1_from;
+	union TastyState *restrict *restrict state2_from;
 
 	state1_from = &state1->skip;
 	state2_from = &state2->skip;
 
-	const union TastyState *const restrict *restrict state1_until
+	union TastyState *restrict *const restrict state1_until
 	= state1_from + (UCHAR_MAX + 1l);
 
 	while (1) {
-
 		/* no conflict, merge state2's branch into state1 */
 		if (*state1_from == NULL_POINTER) {
 			*state1_from = *state2_from;
@@ -116,6 +130,11 @@ static inline void
 merge_chunks(struct TastyChunk *const restrict chunk1,
 	     struct TastyChunk *const restrict chunk2)
 {
+	merge_states(chunk1->start,
+		     chunk2->start);
+
+	concat_patches(&chunk1->patches,
+		       &chunk2->patches);
 }
 
 static inline void
@@ -129,27 +148,22 @@ concat_chunks(struct TastyChunk *const restrict chunk1,
 }
 
 static inline void
-merge_or_list(struct TastyOrNode *restrict or_list)
-{
-}
-
-static inline void
-push_wild_patches(struct TastyPatch *restrict *const restrict patch_list,
+push_wild_patches(struct TastyPatch *restrict *const restrict patch_head,
 		  struct TastyPatch *restrict *const restrict patch_alloc,
 		  union TastyState *const restrict state)
 {
 	struct TastyPatch *restrict patch;
 	struct TastyPatch *restrict next_patch;
-	const union TastyState **restrict state_from;
+	union TastyState *restrict *restrict state_from;
 
 	/* init list traversal vars */
-	next_patch = *patch_list;
+	next_patch = *patch_head;
 	patch	   = *patch_alloc;
 
 	/* starting from first non-NULL match */
 	state_from = &state->step[1];
 
-	const union TastyState *const restrict *restrict state_until
+	union TastyState *const restrict *restrict state_until
 	= state_from + UCHAR_MAX;
 
 	do {
@@ -163,9 +177,12 @@ push_wild_patches(struct TastyPatch *restrict *const restrict patch_list,
 	} while (state_from < state_until);
 
 	/* update head of list, alloc */
-	*patch_list  = next_patch;
+	*patch_head  = next_patch;
 	*patch_alloc = patch;
 }
+
+
+
 
 /* run helper functions
  * ────────────────────────────────────────────────────────────────────────── */
@@ -289,7 +306,7 @@ acc_list_final_scan(struct TastyAccumulator *restrict acc,
 {
 	const union TastyState *restrict state;
 
-	while (acc != NULL) {
+	while (acc != NULL_POINTER) {
 		state = acc->state;
 
 		/* if last step was a match */
@@ -305,7 +322,7 @@ acc_list_final_scan(struct TastyAccumulator *restrict acc,
 				state = state->skip;
 
 				/* if dead end, bail */
-				if (state == NULL)
+				if (state == NULL_POINTER)
 					break;
 
 				/* if skipping yields match, record */
@@ -329,8 +346,8 @@ acc_list_final_scan(struct TastyAccumulator *restrict acc,
 static inline union TastyState *
 match_one(union TastyState *restrict *const restrict state_alloc,
 	  struct TastyPatch *restrict *const restrict patch_alloc,
-	  struct TastyPatch *restrict *const restrict patch_list,
-	  const unsigned char match)
+	  struct TastyPatch *restrict *const restrict patch_head,
+	  const unsigned char token)
 {
 	/* pop state node */
 	union TastyState *const restrict state = *state_alloc;
@@ -341,11 +358,11 @@ match_one(union TastyState *restrict *const restrict state_alloc,
 	++(*patch_alloc);
 
 	/* record pointer needing to be set */
-	patch->state = &state->step[match];
+	patch->state = &state->step[token];
 
 	/* push patch into head of patch_list */
-	patch->next = *patch_list;
-	*patch_list = patch;
+	patch->next = *patch_head;
+	*patch_head = patch;
 
 	/* return new state */
 	return state;
@@ -354,8 +371,8 @@ match_one(union TastyState *restrict *const restrict state_alloc,
 static inline union TastyState *
 match_zero_or_one(union TastyState *restrict *const restrict state_alloc,
 		  struct TastyPatch *restrict *const restrict patch_alloc,
-		  struct TastyPatch *restrict *const restrict patch_list,
-		  const unsigned char match)
+		  struct TastyPatch *restrict *const restrict patch_head,
+		  const unsigned char token)
 {
 	struct TastyPatch *restrict patch;
 
@@ -371,19 +388,19 @@ match_zero_or_one(union TastyState *restrict *const restrict state_alloc,
 	patch->state = &state->skip;
 
 	/* push patch into head of patch_list */
-	patch->next = *patch_list;
-	*patch_list = patch;
+	patch->next = *patch_head;
+	*patch_head = patch;
 
 	/* pop patch node */
 	 patch = *patch_alloc;
 	++(*patch_alloc);
 
 	/* record match pointer needing to be set */
-	patch->state = &state->step[match];
+	patch->state = &state->step[token];
 
 	/* push patch into head of patch_list */
-	patch->next = *patch_list;
-	*patch_list = patch;
+	patch->next = *patch_head;
+	*patch_head = patch;
 
 	/* return new state */
 	return state;
@@ -392,8 +409,8 @@ match_zero_or_one(union TastyState *restrict *const restrict state_alloc,
 static inline union TastyState *
 match_zero_or_more(union TastyState *restrict *const restrict state_alloc,
 		   struct TastyPatch *restrict *const restrict patch_alloc,
-		   struct TastyPatch *restrict *const restrict patch_list,
-		   const unsigned char match)
+		   struct TastyPatch *restrict *const restrict patch_head,
+		   const unsigned char token)
 {
 	/* pop state node */
 	union TastyState *const restrict state = *state_alloc;
@@ -407,11 +424,11 @@ match_zero_or_more(union TastyState *restrict *const restrict state_alloc,
 	patch->state = &state->skip;
 
 	/* push patch into head of patch_list */
-	patch->next = *patch_list;
-	*patch_list = patch;
+	patch->next = *patch_head;
+	*patch_head = patch;
 
 	/* patch match with self */
-	state->step[match] = state;
+	state->step[token] = state;
 
 	/* return new state */
 	return state;
@@ -420,8 +437,8 @@ match_zero_or_more(union TastyState *restrict *const restrict state_alloc,
 static inline union TastyState *
 match_one_or_more(union TastyState *restrict *const restrict state_alloc,
 		  struct TastyPatch *restrict *const restrict patch_alloc,
-		  struct TastyPatch *restrict *const restrict patch_list,
-		  const unsigned char match)
+		  struct TastyPatch *restrict *const restrict patch_head,
+		  const unsigned char token)
 {
 	struct TastyPatch *restrict patch;
 
@@ -431,7 +448,7 @@ match_one_or_more(union TastyState *restrict *const restrict state_alloc,
 	*state_alloc += 2l;
 
 	/* patch first match */
-	state_one->step[match] = state_zero_or_more;
+	state_one->step[token] = state_zero_or_more;
 
 	/* pop patch node */
 	 patch = *patch_alloc;
@@ -441,24 +458,40 @@ match_one_or_more(union TastyState *restrict *const restrict state_alloc,
 	patch->state = &state_zero_or_more->skip;
 
 	/* push patch into head of patch_list */
-	patch->next = *patch_list;
-	*patch_list = patch;
+	patch->next = *patch_head;
+	*patch_head = patch;
 
 	/* pop patch node */
 	 patch = *patch_alloc;
 	++(*patch_alloc);
 
 	/* record match pointer needing to be set */
-	patch->state = &state_zero_or_more->step[match];
+	patch->state = &state_zero_or_more->step[token];
 
 	/* push patch into head of patch_list */
-	patch->next = *patch_list;
-	*patch_list = patch;
+	patch->next = *patch_head;
+	*patch_head = patch;
 
 	/* return first state */
 	return state_one;
 }
 
+
+static inline int
+concat_next_sub_chunk(struct TastyChunk *const restrict prev_chunk,
+		      union TastyState *restrict *const restrict state_alloc,
+		      struct TastyPatch *restrict *const restrict patch_alloc,
+		      const unsigned char *restrict *const restrict string_ptr)
+{
+	const union TastyState *restrict state;
+	struct TastyChunk chunk;
+	struct TastyChunk or_chunk;
+	const unsigned char *restrict string;
+	unsigned char token;
+	int status;
+
+	return 0;
+}
 
 
 

@@ -11,13 +11,15 @@ extern "C" {
  * ────────────────────────────────────────────────────────────────────────── */
 #include <stdlib.h>	/* size_t, m|calloc, free */
 #include <limits.h>	/* UCHAR_MAX */
+#include <stdbool.h>	/* bool */
 
 /* error macros
  * ────────────────────────────────────────────────────────────────────────── */
-#define TASTY_ERROR_OUT_OF_MEMORY	   1 /* failed to allocate memory */
-#define TASTY_ERROR_EMPTY_PATTERN	   2 /* 'pattern' is "" */
-#define TASTY_ERROR_UNBALANCED_PARENTHESES 3 /* parentheses not balanced */
-#define TASTY_ERROR_INVAILD_ESCAPE	   4 /* preceded unescapable char w \ */
+#define TASTY_ERROR_OUT_OF_MEMORY	   -1 /* failed to allocate memory */
+#define TASTY_ERROR_EMPTY_PATTERN	   -2 /* 'pattern' is "" */
+#define TASTY_ERROR_EMPTY_SUBEXPRESSION	   -3 /* () or (| or |) */
+#define TASTY_ERROR_UNBALANCED_PARENTHESES -4 /* parentheses not balanced */
+#define TASTY_ERROR_INVALID_ESCAPE	   -5 /* \[unescapeable char] */
 
 
 /* typedefs, struct declarations
