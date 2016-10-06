@@ -527,6 +527,7 @@ fetch_next_state(struct TastyState *restrict *const restrict state,
 		['|']  = true
 	};
 
+
 	const unsigned char *restrict string;
 	unsigned char token;
 
@@ -538,8 +539,8 @@ fetch_next_state(struct TastyState *restrict *const restrict state,
 	case '\0':
 	case '(':
 	case ')':
-	case '|': /* let caller handle control characters */
-		return TASTY_END_OF_CHUNK;
+	case '|':
+		return TASTY_END_OF_CHUNK; /* ignore control characters */
 
 	case '*':
 	case '+':
@@ -547,12 +548,6 @@ fetch_next_state(struct TastyState *restrict *const restrict state,
 		return TASTY_ERROR_NO_OPERAND;
 
 	case '.':
-		++string;
-		/* check for operand */
-		*state = set_wild_map[*string](state_alloc,
-					       patch_alloc,
-					       patch_head);
-		break;
 
 	case '\\':
 		++string;
@@ -564,14 +559,34 @@ fetch_next_state(struct TastyState *restrict *const restrict state,
 	default:
 		++string;
 		/* check for operand */
-		*state = set_match_map[*string](state_alloc,
-						patch_alloc,
-						patch_head,
-						token);
+		switch (*string) {
+		case '*':
+			*state = match_zero_or_more(state_alloc,
+						    patch_alloc,
+						    patch_head,
+						    token);
+			break;
+		case '+':
+			*state = match_one_or_more(state_alloc,
+						   patch_alloc,
+						   patch_head,
+						   token);
+			break;
+		case '?':
+			*state = match_zero_or_one(state_alloc,
+						   patch_alloc,
+						   patch_head,
+						   token);
+			break;
+
+		default:
+			*state = match_one(state_alloc,
+					   patch_alloc,
+					   patch_head,
+					   token);
+		}
 	}
 
-	*string_ptr = string;
-	return 0;
 }
 
 static inline int

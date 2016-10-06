@@ -15,11 +15,11 @@ extern "C" {
 
 /* error macros
  * ────────────────────────────────────────────────────────────────────────── */
-#define TASTY_ERROR_OUT_OF_MEMORY	   -1 /* failed to allocate memory */
-#define TASTY_ERROR_EMPTY_PATTERN	   -2 /* 'pattern' is "" */
-#define TASTY_ERROR_EMPTY_SUBEXPRESSION	   -3 /* () or (| or |) */
-#define TASTY_ERROR_UNBALANCED_PARENTHESES -4 /* parentheses not balanced */
-#define TASTY_ERROR_INVALID_ESCAPE	   -5 /* \[unescapeable char] */
+#define TASTY_ERROR_OUT_OF_MEMORY	   1 /* failed to allocate memory */
+#define TASTY_ERROR_EMPTY_EXPRESSION	   2 /* pattern or subexpr is "" */
+#define TASTY_ERROR_UNBALANCED_PARENTHESES 3 /* parentheses not balanced */
+#define TASTY_ERROR_INVALID_ESCAPE	   4 /* \[unescapeable char] */
+#define TASTY_ERROR_NO_OPERAND		   5 /* [*+?] preceeded by nothing */
 
 
 /* typedefs, struct declarations
