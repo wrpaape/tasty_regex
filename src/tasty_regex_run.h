@@ -26,6 +26,21 @@ struct TastyMatchInterval {
 	struct TastyMatch *restrict until;
 };
 
+
+/* API
+ * ────────────────────────────────────────────────────────────────────────── */
+int
+tasty_regex_run(const struct TastyRegex *const restrict regex,
+		struct TastyMatchInterval *const restrict matches,
+		const unsigned char *restrict string);
+
+/* free allocations */
+inline void
+tasty_match_interval_free(struct TastyMatchInterval *const restrict matches)
+{
+	free((void *) matches->from);
+}
+
 #ifdef __cplusplus /* close 'extern "C" {' */
 }
 #endif /* ifdef __cplusplus */

@@ -11,6 +11,20 @@ extern "C" {
 #include "tasty_globals.h"
 #include <stdbool.h>	/* bool */
 
+
+/* API
+ * ────────────────────────────────────────────────────────────────────────── */
+int
+tasty_regex_compile(struct TastyRegex *const restrict regex,
+		    const unsigned char *restrict pattern);
+
+/* free allocations */
+inline void
+tasty_regex_free(struct TastyRegex *const restrict regex)
+{
+	free((void *) regex->initial);
+}
+
 #ifdef __cplusplus /* close 'extern "C" {' */
 }
 #endif /* ifdef __cplusplus */

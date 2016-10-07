@@ -50,29 +50,29 @@ struct TastyRegex {
 
 
 
-/* API
- * ────────────────────────────────────────────────────────────────────────── */
-int
-tasty_regex_compile(struct TastyRegex *const restrict regex,
-		    const unsigned char *restrict pattern);
+/* /1* API */
+/*  * ────────────────────────────────────────────────────────────────────────── *1/ */
+/* int */
+/* tasty_regex_compile(struct TastyRegex *const restrict regex, */
+/* 		    const unsigned char *restrict pattern); */
 
-int
-tasty_regex_run(const struct TastyRegex *const restrict regex,
-		struct TastyMatchInterval *const restrict matches,
-		const unsigned char *restrict string);
+/* int */
+/* tasty_regex_run(const struct TastyRegex *const restrict regex, */
+/* 		struct TastyMatchInterval *const restrict matches, */
+/* 		const unsigned char *restrict string); */
 
 /* free allocations */
-inline void
-tasty_regex_free(struct TastyRegex *const restrict regex)
-{
-	free((void *) regex->initial);
-}
+/* inline void */
+/* tasty_regex_free(struct TastyRegex *const restrict regex) */
+/* { */
+/* 	free((void *) regex->initial); */
+/* } */
 
-inline void
-tasty_match_interval_free(struct TastyMatchInterval *const restrict matches)
-{
-	free((void *) matches->from);
-}
+/* inline void */
+/* tasty_match_interval_free(struct TastyMatchInterval *const restrict matches) */
+/* { */
+/* 	free((void *) matches->from); */
+/* } */
 
 #ifdef __cplusplus /* close 'extern "C" {' */
 }
