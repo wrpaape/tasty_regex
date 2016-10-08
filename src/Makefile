@@ -88,19 +88,31 @@ else
 endif
 
 
-# Path delimiter, chain commands token, executable file extension
+# Path delimiter, chain commands token
 # ──────────────────────────────────────────────────────────────────────────────
 ifeq (T,$(SYSTEM_WINDOWS))
 PATH_DELIM	:= \\
 CMD_DELIM 	:= &
-BIN_EXT		:= .exe
 else
 PATH_DELIM	:= /
 CMD_DELIM 	:= ;
-BIN_EXT		:= $(EMPTY)
 endif
 
-
+# File extensions
+# ──────────────────────────────────────────────────────────────────────────────
+ifeq (T,$(SYSTEM_WINDOWS))
+STATIC_EXT	:= .lib
+SHARED_EXT	:= .dll
+BIN_EXT		:= .exe
+else ifeq (T,$(SYSTEM_OSX))
+STATIC_EXT	:= .a
+SHARED_EXT	:= .dylib
+BIN_EXT		:= $(EMPTY)
+else
+STATIC_EXT	:= .a
+SHARED_EXT	:= .so
+BIN_EXT		:= $(EMPTY)
+endif
 
 
 # DIRECTORY CONFIG
@@ -112,6 +124,9 @@ PROJECT_ROOT		:= ..
 SOURCE_DIR		:= $(call PATH_JOIN,$(PROJECT_ROOT) src)
 HEADER_DIR		:= $(SOURCE_DIR)
 OBJECT_DIR		:= $(call PATH_JOIN,$(PROJECT_ROOT) obj)
+PIC_OBJECT_DIR		:= $(OBJECT_DIR)
+SHARED_DIR		:= $(call PATH_JOIN,$(PROJECT_ROOT) shared)
+STATIC_DIR		:= $(call PATH_JOIN,$(PROJECT_ROOT) static)
 BINARY_DIR		:= $(call PATH_JOIN,$(PROJECT_ROOT) bin)
 TEST_SOURCE_DIR		:= $(call PATH_JOIN,$(PROJECT_ROOT) test)
 TEST_HEADER_DIR		:= $(TEST_SOURCE_DIR)
@@ -128,21 +143,27 @@ UNITY_AUTO_DIR  	:= $(call PATH_JOIN,$(UNITY_ROOT) auto)
 
 # PATH CONFIG
 # ══════════════════════════════════════════════════════════════════════════════
-FILE_PATH			= $(call PATH_JOIN,$1 $(call TRIM,$2))
-SCRIPT_FILE_PATH		= $(call FILE_PATH,$1,$2.rb)
-SOURCE_FILE_PATH		= $(call FILE_PATH,$1,$2.c)
-HEADER_FILE_PATH		= $(call FILE_PATH,$1,$2.h)
-OBJECT_FILE_PATH		= $(call FILE_PATH,$1,$2.o)
-BINARY_FILE_PATH		= $(call FILE_PATH,$1,$2$(BIN_EXT))
+FILE_PATH		= $(call PATH_JOIN,$1 $(call TRIM,$2))
+SCRIPT_FILE_PATH	= $(call FILE_PATH,$1,$2.rb)
+SOURCE_FILE_PATH	= $(call FILE_PATH,$1,$2.c)
+HEADER_FILE_PATH	= $(call FILE_PATH,$1,$2.h)
+OBJECT_FILE_PATH	= $(call FILE_PATH,$1,$2.o)
+PIC_OBJECT_FILE_PATH	= $(call FILE_PATH,$1,$2_pic.o)
+STATIC_FILE_PATH	= $(call FILE_PATH,$1,lib$2$(STATIC_EXT))
+SHARED_FILE_PATH	= $(call FILE_PATH,$1,lib$2$(SHARED_EXT))
+BINARY_FILE_PATH	= $(call FILE_PATH,$1,$2$(BIN_EXT))
 
 
 # Project
 # ─────────────── source ───────────────────────────────────────────────────────
-SOURCE_PATH		= $(call SOURCE_FILE_PATH,$(SOURCE_DIR),$1)# implementation
-HEADER_PATH		= $(call HEADER_FILE_PATH,$(HEADER_DIR),$1)# interface
+SOURCE_PATH	= $(call SOURCE_FILE_PATH,$(SOURCE_DIR),$1)# implementation
+HEADER_PATH	= $(call HEADER_FILE_PATH,$(HEADER_DIR),$1)# interface
 # ─────────────── build ────────────────────────────────────────────────────────
-OBJECT_PATH   		= $(call OBJECT_FILE_PATH,$(OBJECT_DIR),$1)# object files
-BINARY_PATH 		= $(call BINARY_FILE_PATH,$(BINARY_DIR),$1)# binary executable output
+OBJECT_PATH   	= $(call OBJECT_FILE_PATH,$(OBJECT_DIR),$1)# object files
+PIC_OBJECT_PATH = $(call PIC_OBJECT_FILE_PATH,$(PIC_OBJECT_DIR),$1)# pic object files
+STATIC_PATH 	= $(call STATIC_FILE_PATH,$(STATIC_DIR),$1)# static library
+SHARED_PATH 	= $(call SHARED_FILE_PATH,$(SHARED_DIR),$1)# shared library
+BINARY_PATH 	= $(call BINARY_FILE_PATH,$(BINARY_DIR),$1)# binary executable output
 
 # Test
 # ─────────────── source ───────────────────────────────────────────────────────
@@ -174,25 +195,34 @@ endif # ifeq (T,$(DEVELOPMENT_MODE))
 CC		:= gcc
 CC_ENV_FLAGS	:= -D__USE_FIXED_PROTOTYPES__ -D_GNU_SOURCE $(SYS_ENV_FLAGS)
 CC_BASE_FLAGS	:= -std=gnu99 -march=native $(CC_ENV_FLAGS) -I$(HEADER_DIR)
+CC_PIC_FLAG	:= -fpic
 
 ifeq (T,$(DEVELOPMENT_MODE))
 CC_FLAGS	:= -g -Wall $(CC_BASE_FLAGS)
 else
 CC_FLAGS	:= -O2 -funroll-loops $(CC_BASE_FLAGS)
-endif
+endif # ifeq (T,$(DEVELOPMENT_MODE))
 
 # Linker
 # ──────────────────────────────────────────────────────────────────────────────
 ifeq (T,$(SYSTEM_OSX))
 LD		:= ld
-LD_FLAGS	:= -macosx_version_min 10.11 -no_pie $(SYS_ARCH_FLAG)
+LD_SHARED_FLAGS	:= -dylib
+LD_BIN_FLAGS	:= -no_pie
+LD_FLAGS	:= -macosx_version_min 10.11 $(SYS_ARCH_FLAG)
 LD_LIB_FLAGS	:= -lc
 else
 LD		:= gcc
+LD_SHARED_FLAGS	:= -shared
+LD_BIN_FLAGS	:= $(EMPTY)
 LD_FLAGS	:= $(EMPTY)
 LD_LIB_FLAGS	:= $(EMPTY)
 endif
 
+# Archiver
+# ──────────────────────────────────────────────────────────────────────────────
+AR		:= ar
+AR_FLAGS	:= rcs
 
 # Make Directory
 # ──────────────────────────────────────────────────────────────────────────────
@@ -220,18 +250,84 @@ RUBY		:= ruby
 RUBY_FLAGS	:= $(EMPTY)
 
 
+# COMPILATION UNITS
+# ══════════════════════════════════════════════════════════════════════════════
+# Independent headers
+# ──────────────────────────────────────────────────────────────────────────────
+TASTY_REGEX_GLOBALS_HDR	:= $(call HEADER_PATH,tasty_regex_globals)
+
+# tasty_regex_utils
+# ══════════════════════════════════════════════════════════════════════════════
+TASTY_REGEX_UTILS_SRC 		:= $(call SOURCE_PATH,tasty_regex_utils)
+TASTY_REGEX_UTILS_HDR		:= $(call HEADER_PATH,tasty_regex_utils)
+TASTY_REGEX_UTILS_OBJ 		:= $(call OBJECT_PATH,tasty_regex_utils)
+TASTY_REGEX_UTILS_PIC_OBJ 	:= $(call PIC_OBJECT_PATH,tasty_regex_utils)
+# ─────────────── target prequisites ───────────────────────────────────────────
+TASTY_REGEX_UTILS_OBJ_PREQS	:= $(TASTY_REGEX_UTILS_SRC) 	\
+			   	   $(TASTY_REGEX_UTILS_HDR)
+TASTY_REGEX_UTILS_OBJ_GROUP	:= $(TASTY_REGEX_UTILS_OBJ)
+TASTY_REGEX_UTILS_PIC_OBJ_PREQS	:= $(TASTY_REGEX_UTILS_OBJ_PREQS)
+TASTY_REGEX_UTILS_PIC_OBJ_GROUP	:= $(TASTY_REGEX_UTILS_PIC_OBJ)
+# ─────────────── targets ──────────────────────────────────────────────────────
+TARGETS				+= $(TASTY_REGEX_UTILS_OBJ)	\
+				   $(TASTY_REGEX_UTILS_PIC_OBJ)
+
+
+# tasty_regex_compile
+# ══════════════════════════════════════════════════════════════════════════════
+TASTY_REGEX_COMPILE_SRC 	:= $(call SOURCE_PATH,tasty_regex_compile)
+TASTY_REGEX_COMPILE_HDR		:= $(call HEADER_PATH,tasty_regex_compile)
+TASTY_REGEX_COMPILE_OBJ		:= $(call OBJECT_PATH,tasty_regex_compile)
+TASTY_REGEX_COMPILE_PIC_OBJ	:= $(call PIC_OBJECT_PATH,tasty_regex_compile)
+# ─────────────── target prequisites ───────────────────────────────────────────
+TASTY_REGEX_COMPILE_OBJ_PREQS		:= $(TASTY_REGEX_COMPILE_SRC) 		\
+			   	   	   $(TASTY_REGEX_COMPILE_HDR)		\
+			   	   	   $(TASTY_REGEX_GLOBALS_HDR)		\
+			   	   	   $(TASTY_REGEX_UTILS_HDR)
+TASTY_REGEX_COMPILE_OBJ_GROUP		:= $(TASTY_REGEX_COMPILE_OBJ)		\
+			   	   	   $(TASTY_REGEX_UTILS_OBJ_GROUP)
+TASTY_REGEX_COMPILE_PIC_OBJ_PREQS	:= $(TASTY_REGEX_COMPILE_OBJ_PREQS)
+TASTY_REGEX_COMPILE_PIC_OBJ_GROUP	:= $(TASTY_REGEX_COMPILE_PIC_OBJ)	\
+			   	   	   $(TASTY_REGEX_UTILS_PIC_OBJ_GROUP)
+# ─────────────── targets ──────────────────────────────────────────────────────
+TARGETS					+= $(TASTY_REGEX_COMPILE_OBJ)		\
+				   	   $(TASTY_REGEX_COMPILE_PIC_OBJ)
+
+
+# tasty_regex_run
+# ══════════════════════════════════════════════════════════════════════════════
+TASTY_REGEX_RUN_SRC 		:= $(call SOURCE_PATH,tasty_regex_run)
+TASTY_REGEX_RUN_HDR		:= $(call HEADER_PATH,tasty_regex_run)
+TASTY_REGEX_RUN_OBJ		:= $(call OBJECT_PATH,tasty_regex_run)
+TASTY_REGEX_RUN_PIC_OBJ		:= $(call PIC_OBJECT_PATH,tasty_regex_run)
+# ─────────────── target prequisites ───────────────────────────────────────────
+TASTY_REGEX_RUN_OBJ_PREQS	:= $(TASTY_REGEX_RUN_SRC) 		\
+			   	   $(TASTY_REGEX_RUN_HDR)		\
+			   	   $(TASTY_REGEX_GLOBALS_HDR)		\
+			   	   $(TASTY_REGEX_UTILS_HDR)
+TASTY_REGEX_RUN_OBJ_GROUP	:= $(TASTY_REGEX_RUN_OBJ)		\
+			   	   $(TASTY_REGEX_UTILS_OBJ_GROUP)
+TASTY_REGEX_RUN_PIC_OBJ_PREQS	:= $(TASTY_REGEX_RUN_OBJ_PREQS)
+TASTY_REGEX_RUN_PIC_OBJ_GROUP	:= $(TASTY_REGEX_RUN_PIC_OBJ)		\
+			   	   $(TASTY_REGEX_UTILS_PIC_OBJ_GROUP)
+# ─────────────── targets ──────────────────────────────────────────────────────
+TARGETS				+= $(TASTY_REGEX_RUN_OBJ)		\
+				   $(TASTY_REGEX_RUN_PIC_OBJ)
+
 
 # tasty_regex (main module)
 # ══════════════════════════════════════════════════════════════════════════════
-TASTY_REGEX_SRC 	:= $(call SOURCE_PATH,tasty_regex)
-TASTY_REGEX_HDR		:= $(call HEADER_PATH,tasty_regex)
-TASTY_REGEX_OBJ 	:= $(call OBJECT_PATH,tasty_regex)
+TASTY_REGEX_HDR			:= $(call HEADER_PATH,tasty_regex)
+TASTY_REGEX_STATIC 		:= $(call STATIC_PATH,tasty_regex)
+TASTY_REGEX_SHARED 		:= $(call SHARED_PATH,tasty_regex)
 # ─────────────── target prequisites ───────────────────────────────────────────
-TASTY_REGEX_OBJ_PREQS	:= $(TASTY_REGEX_SRC) 		\
-			   $(TASTY_REGEX_HDR)
-TASTY_REGEX_OBJ_GROUP	:= $(TASTY_REGEX_OBJ)
+TASTY_REGEX_STATIC_PREQS	:= $(TASTY_REGEX_COMPILE_OBJ_GROUP) \
+				   $(TASTY_REGEX_RUN_OBJ_GROUP)
+TASTY_REGEX_SHARED_PREQS	:= $(TASTY_REGEX_COMPILE_PIC_OBJ_GROUP) \
+				   $(TASTY_REGEX_RUN_PIC_OBJ_GROUP)
 # ─────────────── targets ──────────────────────────────────────────────────────
-TARGETS			+= $(TASTY_REGEX_OBJ)
+TARGETS				+= $(TASTY_REGEX_SHARED)	\
+			   	   $(TASTY_REGEX_STATIC)
 
 
 # tasty_grep (entry point)
@@ -276,7 +372,6 @@ UNITY_OBJ_PREQS		:= $(UNITY_SRC)			\
 			   $(UNITY_INTERNALS_HDR)	\
 			   $(UNITY_CONFIG_HDR)
 # ─────────────── targets ──────────────────────────────────────────────────────
-BUILD_DIRS 		+= $(TEST_RUNNER_SOURCE_DIR)
 TARGETS			+= $(UNITY_OBJ)
 
 
@@ -321,7 +416,7 @@ endif # ifeq (T,$(DEVELOPMENT_MODE))
 # ══════════════════════════════════════════════════════════════════════════════
 # make all targets
 # ──────────────────────────────────────────────────────────────────────────────
-all:  $(BUILD_DIRS) $(TARGETS)
+all: $(TARGETS)
 
 # run all unit tests
 # ──────────────────────────────────────────────────────────────────────────────
@@ -338,37 +433,58 @@ endif # ifeq (T,$(DEVELOPMENT_MODE))
 clean:
 	$(RM) $(RM_FLAGS) $(TARGETS)
 
-# ensure build directories are present
-# ──────────────────────────────────────────────────────────────────────────────
-$(TEST_RUNNER_SOURCE_DIR):
-	$(MKDIR) $(MKDIR_FLAGS) $@
-
-$(OBJECT_DIR):
-	$(MKDIR) $(MKDIR_FLAGS) $@
-
-$(UNITY_OBJECT_DIR):
-	$(MKDIR) $(MKDIR_FLAGS) $@
-
-$(BINARY_DIR):
-	$(MKDIR) $(MKDIR_FLAGS) $@
-
 
 ## MAKE PROJECT
 # ══════════════════════════════════════════════════════════════════════════════
 # make tasty_grep binary
 # ──────────────────────────────────────────────────────────────────────────────
 $(PROJECT_BIN): $(PROJECT_BIN_PREQS)
-	$(LD) $(LD_FLAGS) $^ $(LD_LIB_FLAGS) -o $@
+	$(LD) $(LD_FLAGS) $(LD_BIN_FLAGS) $^ $(LD_LIB_FLAGS) -o $@
 
-# # make tasty_grep object
-# # ──────────────────────────────────────────────────────────────────────────────
+# make tasty_grep object
+# ──────────────────────────────────────────────────────────────────────────────
 $(PROJECT_OBJ): $(PROJECT_OBJ_PREQS)
 	$(CC) $(CC_FLAGS) -c $< -o $@
 
-# # make tasty_regex object
-# # ──────────────────────────────────────────────────────────────────────────────
-$(TASTY_REGEX_OBJ): $(TASTY_REGEX_OBJ_PREQS)
+# make tasty_regex static library
+# ──────────────────────────────────────────────────────────────────────────────
+$(TASTY_REGEX_STATIC): $(TASTY_REGEX_STATIC_PREQS)
+	$(AR) $(AR_FLAGS) $@ $^
+
+# make tasty_regex shared library
+# ──────────────────────────────────────────────────────────────────────────────
+$(TASTY_REGEX_SHARED): $(TASTY_REGEX_SHARED_PREQS)
+	$(LD) $(LD_FLAGS) $(LD_SHARED_FLAGS) $^ $(LD_LIB_FLAGS) -o $@
+
+# make tasty_regex_run object
+# ──────────────────────────────────────────────────────────────────────────────
+$(TASTY_REGEX_RUN_OBJ): $(TASTY_REGEX_RUN_OBJ_PREQS)
 	$(CC) $(CC_FLAGS) -c $< -o $@
+
+# make tasty_regex_run pic object
+# ──────────────────────────────────────────────────────────────────────────────
+$(TASTY_REGEX_RUN_PIC_OBJ): $(TASTY_REGEX_RUN_PIC_OBJ_PREQS)
+	$(CC) $(CC_FLAGS) $(CC_PIC_FLAG) -c $< -o $@
+
+# make tasty_regex_compile object
+# ──────────────────────────────────────────────────────────────────────────────
+$(TASTY_REGEX_COMPILE_OBJ): $(TASTY_REGEX_COMPILE_OBJ_PREQS)
+	$(CC) $(CC_FLAGS) -c $< -o $@
+
+# make tasty_regex_compile pic object
+# ──────────────────────────────────────────────────────────────────────────────
+$(TASTY_REGEX_COMPILE_PIC_OBJ): $(TASTY_REGEX_COMPILE_PIC_OBJ_PREQS)
+	$(CC) $(CC_FLAGS) $(CC_PIC_FLAG) -c $< -o $@
+
+# make tasty_regex_utils object
+# ──────────────────────────────────────────────────────────────────────────────
+$(TASTY_REGEX_UTILS_OBJ): $(TASTY_REGEX_UTILS_OBJ_PREQS)
+	$(CC) $(CC_FLAGS) -c $< -o $@
+
+# make tasty_regex_utils pic object
+# ──────────────────────────────────────────────────────────────────────────────
+$(TASTY_REGEX_UTILS_PIC_OBJ): $(TASTY_REGEX_UTILS_PIC_OBJ_PREQS)
+	$(CC) $(CC_FLAGS) $(CC_PIC_FLAG) -c $< -o $@
 
 
 
@@ -389,7 +505,7 @@ $(UNITY_OBJ): $(UNITY_OBJ_PREQS)
 # 	tasty_regex_test_runner	source
 # ──────────────────────────────────────────────────────────────────────────────
 $(TASTY_REGEX_TEST_BIN): $(TASTY_REGEX_TEST_BIN_PREQS)
-	$(LD) $(LD_FLAGS) $^ $(UNITY_LD_LIB_FLAGS) $(LD_LIB_FLAGS) -o $@
+	$(LD) $(LD_FLAGS) $(LD_BIN_FLAGS) $^ $(UNITY_LD_LIB_FLAGS) $(LD_LIB_FLAGS) -o $@
 
 $(TASTY_REGEX_TRNR_OBJ): $(TASTY_REGEX_TRNR_OBJ_PREQS)
 	$(CC) $(UNITY_CC_FLAGS) -c $< -o $@
