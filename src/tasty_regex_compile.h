@@ -8,7 +8,7 @@ extern "C" {
 
 /* external dependencies
  * ────────────────────────────────────────────────────────────────────────── */
-#include "tasty_globals.h"
+#include "tasty_regex_globals.h"
 #include <stdbool.h>	/* bool */
 
 

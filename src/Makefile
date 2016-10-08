@@ -186,12 +186,13 @@ endif
 ifeq (T,$(SYSTEM_OSX))
 LD		:= ld
 LD_FLAGS	:= -macosx_version_min 10.11 -no_pie $(SYS_ARCH_FLAG)
+LD_LIB_FLAGS	:= -lc
 else
 LD		:= gcc
 LD_FLAGS	:= $(EMPTY)
+LD_LIB_FLAGS	:= $(EMPTY)
 endif
 
-LD_LIB_FLAGS	:= $(THREADS_LIB_FLAG) $(SYSTEM_LIB_FLAGS) $(LIBMYSQLCLIENT) -lc
 
 # Make Directory
 # ──────────────────────────────────────────────────────────────────────────────
@@ -207,11 +208,8 @@ endif
 # Cleaner
 # ──────────────────────────────────────────────────────────────────────────────
 ifeq (T,$(SYSTEM_WINDOWS))
-# 'clean' command exceeds 8192 character limit for windows
-# RM		:= cmd \/C del
-# RM_FLAGS	:= /F /Q
-RM		:= rm
-RM_FLAGS	:= -rf
+RM		:= cmd \/C del
+RM_FLAGS	:= /F /Q
 else
 RM		:= rm
 RM_FLAGS	:= -rf
@@ -221,14 +219,6 @@ endif
 RUBY		:= ruby
 RUBY_FLAGS	:= $(EMPTY)
 
-
-
-
-# build directories
-# ──────────────────────────────────────────────────────────────────────────────
-BUILD_DIRS	:= $(OBJECT_DIR)		\
-		   $(UNITY_OBJECT_DIR)		\
-		   $(BINARY_DIR)
 
 
 # tasty_regex (main module)
