@@ -12,7 +12,12 @@
 #	define NULL_POINTER NULL    /* use traditional c null pointer macro */
 #endif /* ifdef __cplusplus */
 
-#define TASTY_END_OF_CHUNK -1
+#define TASTY_CONTROL_END_OF_PATTERN	-1
+#define TASTY_CONTROL_PARENTHESES_OPEN	-2
+#define TASTY_CONTROL_PARENTHESES_CLOSE	-3
+#define TASTY_CONTROL_OR_BAR		-4
+
+#define IS_TASTY_CONTROL(STATUS) (STATUS < 0)
 
 
 /* typedefs, struct declarations
@@ -92,6 +97,30 @@ merge_states(union TastyState *const restrict state1,
 	}
 }
 
+static inline void
+copy_steps(union TastyState *const restrict state1,
+	   union TastyState *const restrict state2)
+{
+	union TastyState *restrict *restrict state1_from;
+	union TastyState *restrict *restrict state2_from;
+
+	state1_from = &state1->step[1];
+	state2_from = &state2->step[1];
+
+	union TastyState *restrict *const restrict state1_until
+	= state1_from + UCHAR_MAX;
+
+	while (1) {
+		*state1_from = *state2_from;
+
+		++state1_from;
+		if (state1_from == state1_until)
+			return;
+
+		++state2_from;
+	}
+}
+
 
 static inline void
 merge_chunks(struct TastyChunk *const restrict chunk1,
@@ -113,6 +142,92 @@ concat_chunks(struct TastyChunk *const restrict chunk1,
 
 	chunk1->patches = chunk2->patches;
 }
+
+static inline void
+sub_chunk_zero_or_more(struct TastyChunk *const restrict chunk)
+{
+	struct TastyPatchList *const restrict chunk_patches = &chunk->patches;
+
+	struct TastyPatch *const restrict chunk_patches_head
+	= chunk_patches->head;
+
+	patch_states(chunk_patches_head,
+		     chunk->start);
+
+	chunk_patches_head->state = &chunk->start->skip;
+	chunk_patches_head->next  = NULL_POINTER;
+	chunk_patches->end_ptr	  = &chunk_patches_head->next;
+}
+
+static inline void
+sub_chunk_one_or_more(struct TastyChunk *const restrict chunk,
+		      union TastyState *restrict *const restrict state_alloc)
+{
+	/* pop state node */
+	union TastyState *const restrict state = *state_alloc;
+	++(*state_alloc);
+
+	/* append state node that will loop on a match or skip */
+	copy_steps(state,
+		   chunk->start);
+
+	struct TastyPatchList *const restrict chunk_patches = &chunk->patches;
+	struct TastyPatch *const restrict chunk_patches_head
+	= chunk_patches->head;
+
+	patch_states(chunk_patches->head,
+		     state);
+
+	chunk_patches_head->state = &state->skip;
+	chunk_patches_head->next  = NULL_POINTER;
+	chunk_patches->end_ptr	  = &chunk_patches_head->next;
+}
+
+static inline void
+sub_chunk_zero_or_one(struct TastyChunk *const restrict chunk,
+		      struct TastyPatch *restrict *const restrict patch_alloc)
+{
+	/* pop patch node */
+	struct TastyPatch *const restrict patch = *patch_alloc;
+	++(*patch_alloc);
+
+	/* record skip over entire chunk */
+	patch->state = &chunk->start->skip;
+
+	/* push patch into head of patch_list */
+	patch->next  = chunk->patches.head;
+	chunk->patches.head = patch;
+}
+
+static inline void
+close_sub_chunk(struct TastyChunk *const restrict chunk,
+		union TastyState *restrict *const restrict state_alloc,
+		struct TastyPatch *restrict *const restrict patch_alloc,
+		const unsigned char *restrict *const restrict pattern_ptr)
+{
+	switch (**pattern_ptr) {
+	case '*':
+		++(*pattern_ptr);
+		sub_chunk_zero_or_more(chunk);
+		return;
+
+	case '+':
+		++(*pattern_ptr);
+		sub_chunk_one_or_more(chunk,
+				      state_alloc);
+		return;
+
+	case '?':
+		++(*pattern_ptr);
+		sub_chunk_zero_or_one(chunk,
+				      patch_alloc);
+		return;
+
+	default: /* no nothing */
+		return;
+	}
+}
+
 
 static inline void
 push_wild_patches(struct TastyPatch *restrict *const restrict patch_head,
@@ -469,20 +584,22 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 
 	/* fetch token */
 	switch (token) {
-	case '\0':
+	case '\0': /* let caller handle control characters */
+		return TASTY_CONTROL_END_OF_PATTERN;
 	case '(':
+		return TASTY_CONTROL_PARENTHESES_OPEN;
 	case ')':
-	case '|': /* let caller handle control characters */
-		return TASTY_END_OF_CHUNK;
+		return TASTY_CONTROL_PARENTHESES_CLOSE;
+	case '|':
+		return TASTY_CONTROL_OR_BAR;
 
 	case '*':
 	case '+':
 	case '?':
 		return TASTY_ERROR_NO_OPERAND;
 
-	case '.':
+	case '.': /* wild state, check for operator */
 		++pattern;
-		/* check for operand */
 		*state = set_wild_map[*pattern](state_alloc,
 						patch_alloc,
 						patch_head);
@@ -495,9 +612,8 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 		if (!valid_escape_map[token])
 			return TASTY_ERROR_INVALID_ESCAPE;
 		/* fall through */
-	default:
+	default: /* literal match state, check for operator */
 		++pattern;
-		/* check for operand */
 		*state = set_match_map[*pattern](state_alloc,
 						 patch_alloc,
 						 patch_head,
@@ -508,67 +624,209 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 	return 0;
 }
 
+int
+fetch_next_sub_chunk(struct TastyChunk *const restrict chunk,
+		     union TastyState *restrict *const restrict state_alloc,
+		     struct TastyPatch *restrict *const restrict patch_alloc,
+		     const unsigned char *restrict *const restrict pattern_ptr)
+{
+	struct TastyChunk next_chunk;
+	union TastyState *restrict state;
+	struct TastyPatchList next_patches;
+	int status;
 
-static inline int
+	struct TastyPatchList *const restrict chunk_patches = &chunk->patches;
+
+	/* ensure at least 1 state in pattern chunk */
+	chunk_patches->head    = NULL_POINTER;
+	chunk_patches->end_ptr = &(*patch_alloc)->next;
+
+	status = fetch_next_state(&chunk->start,
+				  state_alloc,
+				  patch_alloc,
+				  &chunk_patches->head,
+				  pattern_ptr);
+
+	switch (status) {
+	case 0: /* found next state */
+		break;
+
+	case TASTY_CONTROL_END_OF_PATTERN:
+		return TASTY_ERROR_UNBALANCED_PARENTHESES;
+
+	case TASTY_CONTROL_OR_BAR:
+	case TASTY_CONTROL_PARENTHESES_CLOSE:
+		return TASTY_ERROR_EMPTY_EXPRESSION;
+
+	case TASTY_CONTROL_PARENTHESES_OPEN:
+		++(*pattern_ptr);
+		status = fetch_next_sub_chunk(chunk,
+					      state_alloc,
+					      patch_alloc,
+					      pattern_ptr);
+		if (status == 0)
+			break;
+		/* fall through */
+	default: /* error */
+		return status;
+	}
+
+	next_patches.head = NULL_POINTER;
+
+	while (1) {
+		next_patches.end_ptr = &(*patch_alloc)->next;
+
+		status = fetch_next_state(&state,
+					  state_alloc,
+					  patch_alloc,
+					  &next_patches.head,
+					  pattern_ptr);
+
+		switch (status) {
+		case 0: /* patch previous with next state */
+			patch_states(chunk_patches->head,
+				     state);
+			*chunk_patches = next_patches;
+			next_patches.head = NULL_POINTER;
+			continue;
+
+		case TASTY_CONTROL_PARENTHESES_CLOSE:
+			++(*pattern_ptr);
+			return 0;
+
+		case TASTY_CONTROL_END_OF_PATTERN:
+			return TASTY_ERROR_UNBALANCED_PARENTHESES;
+
+		case TASTY_CONTROL_OR_BAR:
+			++(*pattern_ptr);
+			status = fetch_next_sub_chunk(&next_chunk,
+						      state_alloc,
+						      patch_alloc,
+						      pattern_ptr);
+			if (status == 0) {
+				merge_chunks(chunk,
+					     &next_chunk);
+				close_sub_chunk(chunk,
+						state_alloc,
+						patch_alloc,
+						pattern_ptr);
+			}
+			return status;
+
+		case TASTY_CONTROL_PARENTHESES_OPEN:
+			++(*pattern_ptr);
+			status = fetch_next_sub_chunk(&next_chunk,
+						      state_alloc,
+						      patch_alloc,
+						      pattern_ptr);
+			if (status == 0) {
+				concat_chunks(chunk,
+					      &next_chunk);
+				continue;
+			} /* fall through */
+		default: /* error */
+			return status;
+		}
+	}
+}
+
+int
 fetch_next_chunk(struct TastyChunk *const restrict chunk,
 		 union TastyState *restrict *const restrict state_alloc,
 		 struct TastyPatch *restrict *const restrict patch_alloc,
 		 const unsigned char *restrict *const restrict pattern_ptr)
 {
+	struct TastyChunk next_chunk;
 	union TastyState *restrict state;
-	struct TastyPatch *restrict prev_patch_head;
-	struct TastyPatch *restrict next_patch_head;
-	struct TastyPatch *restrict *restrict prev_patch_end_ptr;
-	struct TastyPatch *restrict *restrict next_patch_end_ptr;
+	struct TastyPatchList next_patches;
 	int status;
 
+	struct TastyPatchList *const restrict chunk_patches = &chunk->patches;
+
 	/* ensure at least 1 state in pattern chunk */
-	prev_patch_head	   = NULL_POINTER;
-	prev_patch_end_ptr = &(*patch_alloc)->next;
+	chunk_patches->head    = NULL_POINTER;
+	chunk_patches->end_ptr = &(*patch_alloc)->next;
 
 	status = fetch_next_state(&chunk->start,
 				  state_alloc,
 				  patch_alloc,
-				  &prev_patch_head,
+				  &chunk_patches->head,
 				  pattern_ptr);
 
-	/* if TASTY_END_OF_CHUNK or fatal error, return */
-	if (status != 0) {
-		return (status == TASTY_END_OF_CHUNK)
-		     ? TASTY_ERROR_EMPTY_EXPRESSION
-		     : status;
+	switch (status) {
+	case 0: /* found next state */
+		break;
+
+	case TASTY_CONTROL_OR_BAR:
+		return TASTY_ERROR_EMPTY_EXPRESSION;
+
+	case TASTY_CONTROL_PARENTHESES_CLOSE:
+		return TASTY_ERROR_UNBALANCED_PARENTHESES;
+
+	case TASTY_CONTROL_PARENTHESES_OPEN:
+		++(*pattern_ptr);
+		status = fetch_next_sub_chunk(chunk,
+					      state_alloc,
+					      patch_alloc,
+					      pattern_ptr);
+		if (status == 0)
+			break;
+		/* fall through */
+	default: /* error */
+		return status;
 	}
 
+	next_patches.head = NULL_POINTER;
+
 	while (1) {
-		next_patch_head	   = NULL_POINTER;
-		next_patch_end_ptr = &(*patch_alloc)->next;
+		next_patches.end_ptr = &(*patch_alloc)->next;
 
 		status = fetch_next_state(&state,
 					  state_alloc,
 					  patch_alloc,
-					  &next_patch_head,
+					  &next_patches.head,
 					  pattern_ptr);
 
-		if (status != 0) {
-			/* reached control character */
-			if (status == TASTY_END_OF_CHUNK)
-				break;
+		switch (status) {
+		case 0: /* patch previous with next state */
+			patch_states(chunk_patches->head,
+				     state);
+			*chunk_patches = next_patches;
+			next_patches.head = NULL_POINTER;
+			continue;
 
-			return status; /* error */
+		case TASTY_CONTROL_END_OF_PATTERN: /* return success */
+			return 0;
+
+		case TASTY_CONTROL_PARENTHESES_CLOSE:
+			return TASTY_ERROR_UNBALANCED_PARENTHESES;
+
+		case TASTY_CONTROL_OR_BAR:
+			++(*pattern_ptr);
+			status = fetch_next_chunk(&next_chunk,
+						  state_alloc,
+						  patch_alloc,
+						  pattern_ptr);
+			if (status == 0)
+				merge_chunks(chunk,
+					     &next_chunk);
+			return status;
+
+		case TASTY_CONTROL_PARENTHESES_OPEN:
+			++(*pattern_ptr);
+			status = fetch_next_sub_chunk(&next_chunk,
+						      state_alloc,
+						      patch_alloc,
+						      pattern_ptr);
+			if (status == 0) {
+				concat_chunks(chunk,
+					      &next_chunk);
+				continue;
+			} /* fall through */
+		default: /* error */
+			return status;
 		}
-
-		/* patch previous with next state */
-		patch_states(prev_patch_head,
-			     state);
-
-		prev_patch_head	   = next_patch_head;
-		prev_patch_end_ptr = next_patch_end_ptr;
 	}
-
-	/* set patches and return success */
-	chunk->patches.head    = prev_patch_head;
-	chunk->patches.end_ptr = prev_patch_end_ptr;
-	return 0;
 }
 
 static inline int
