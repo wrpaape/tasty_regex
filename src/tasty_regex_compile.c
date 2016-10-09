@@ -54,7 +54,7 @@ patch_states(struct TastyPatch *restrict patch,
 
 static inline void
 concat_patches(struct TastyPatchList *const restrict patches1,
-		   struct TastyPatchList *const restrict patches2)
+	       struct TastyPatchList *const restrict patches2)
 {
 	*(patches1->end_ptr) = patches2->head;
 	patches1->end_ptr    = patches2->end_ptr;
@@ -411,14 +411,14 @@ wild_one_or_more(union TastyState *restrict *const restrict state_alloc,
 
 
 
-/* fetch next atomic state from pattern
+/* fetch next state node from pattern
  * ────────────────────────────────────────────────────────────────────────── */
 static inline int
 fetch_next_state(union TastyState *restrict *const restrict state,
 		 union TastyState *restrict *const restrict state_alloc,
 		 struct TastyPatch *restrict *const restrict patch_alloc,
 		 struct TastyPatch *restrict *const restrict patch_head,
-		 const unsigned char *restrict *const restrict string_ptr)
+		 const unsigned char *restrict *const restrict pattern_ptr)
 {
 	/* cached maps */
 	typedef union TastyState *
@@ -461,11 +461,11 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 		['|']  = true
 	};
 
-	const unsigned char *restrict string;
+	const unsigned char *restrict pattern;
 	unsigned char token;
 
-	string = *string_ptr;
-	token  = *string;
+	pattern = *pattern_ptr;
+	token   = *pattern;
 
 	/* fetch token */
 	switch (token) {
@@ -481,30 +481,30 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 		return TASTY_ERROR_NO_OPERAND;
 
 	case '.':
-		++string;
+		++pattern;
 		/* check for operand */
-		*state = set_wild_map[*string](state_alloc,
-					       patch_alloc,
-					       patch_head);
+		*state = set_wild_map[*pattern](state_alloc,
+						patch_alloc,
+						patch_head);
 		break;
 
 	case '\\':
-		++string;
-		token = *string;
+		++pattern;
+		token = *pattern;
 
 		if (!valid_escape_map[token])
 			return TASTY_ERROR_INVALID_ESCAPE;
 		/* fall through */
 	default:
-		++string;
+		++pattern;
 		/* check for operand */
-		*state = set_match_map[*string](state_alloc,
-						patch_alloc,
-						patch_head,
-						token);
+		*state = set_match_map[*pattern](state_alloc,
+						 patch_alloc,
+						 patch_head,
+						 token);
 	}
 
-	*string_ptr = string;
+	*pattern_ptr = pattern;
 	return 0;
 }
 
@@ -513,27 +513,70 @@ static inline int
 fetch_next_chunk(struct TastyChunk *const restrict chunk,
 		 union TastyState *restrict *const restrict state_alloc,
 		 struct TastyPatch *restrict *const restrict patch_alloc,
-		 const unsigned char *restrict *const restrict string_ptr)
+		 const unsigned char *restrict *const restrict pattern_ptr)
 {
-	const union TastyState *restrict state;
-	const unsigned char *restrict string;
-	unsigned char token;
+	union TastyState *restrict state;
+	struct TastyPatch *restrict prev_patch_head;
+	struct TastyPatch *restrict next_patch_head;
+	struct TastyPatch *restrict *restrict prev_patch_end_ptr;
+	struct TastyPatch *restrict *restrict next_patch_end_ptr;
 	int status;
 
-	/* init chunk */
-	chunk->patches.head    = NULL_POINTER;
-	chunk->patches.end_ptr = &(*patch_alloc)->next;
+	/* ensure at least 1 state in pattern chunk */
+	prev_patch_head	   = NULL_POINTER;
+	prev_patch_end_ptr = &(*patch_alloc)->next;
 
 	status = fetch_next_state(&chunk->start,
 				  state_alloc,
 				  patch_alloc,
-				  &chunk->patches.head,
-				  string_ptr);
+				  &prev_patch_head,
+				  pattern_ptr);
 
-	if (status != 0)
-		return status;
+	/* if TASTY_END_OF_CHUNK or fatal error, return */
+	if (status != 0) {
+		return (status == TASTY_END_OF_CHUNK)
+		     ? TASTY_ERROR_EMPTY_EXPRESSION
+		     : status;
+	}
 
+	while (1) {
+		next_patch_head	   = NULL_POINTER;
+		next_patch_end_ptr = &(*patch_alloc)->next;
 
+		status = fetch_next_state(&state,
+					  state_alloc,
+					  patch_alloc,
+					  &next_patch_head,
+					  pattern_ptr);
+
+		if (status != 0) {
+			/* reached control character */
+			if (status == TASTY_END_OF_CHUNK)
+				break;
+
+			return status; /* error */
+		}
+
+		/* patch previous with next state */
+		patch_states(prev_patch_head,
+			     state);
+
+		prev_patch_head	   = next_patch_head;
+		prev_patch_end_ptr = next_patch_end_ptr;
+	}
+
+	/* set patches and return success */
+	chunk->patches.head    = prev_patch_head;
+	chunk->patches.end_ptr = prev_patch_end_ptr;
+	return 0;
+}
+
+static inline int
+compile_pattern(struct TastyRegex *const restrict regex,
+		union TastyState *restrict state_alloc,
+		struct TastyPatch *restrict patch_alloc,
+		const unsigned char *restrict pattern)
+{
 	return 0;
 }
 
@@ -544,44 +587,41 @@ int
 tasty_regex_compile(struct TastyRegex *const restrict regex,
 		    const unsigned char *restrict pattern)
 {
-	/* const union TastyState *restrict state_alloc; */
-	/* const union TastyState *restrict state; */
-	/* struct TastyChunk *restrict chunk_stack; */
+	if (*pattern == '\0')
+		return TASTY_ERROR_EMPTY_EXPRESSION;
 
-	/* const size_t length_pattern = string_length(pattern); */
+	const size_t length_pattern = nonempty_string_length(pattern);
 
-	/* if (length_pattern == 0lu) */
-	/* 	return TASTY_ERROR_EMPTY_PATTERN; */
+	/* allocate buffer of patch nodes for worst case pattern:
+	 * "........" (all wild, no operators) */
+	struct TastyPatch *const restrict patch_alloc
+	= malloc(sizeof(struct TastyPatch) * (length_pattern * UCHAR_MAX));
 
-	/* /1* allocate stack of chunks (worst case (N + 1) / 2 nodes deep when */
-	/*  * pattern like "a|b|c|d" *1/ */
-	/* struct TastyChunk *const restrict chunk_base */
-	/* = malloc(sizeof(struct TastyChunk) * ((length_pattern + 1lu) / 2lu)); */
+	if (UNLIKELY(patch_alloc == NULL_POINTER))
+		return TASTY_ERROR_OUT_OF_MEMORY;
 
-	/* if (UNLIKELY(chunk_base == NULL_POINTER)) */
-	/* 	return TASTY_ERROR_OUT_OF_MEMORY; */
+	/* allocate buffer of state nodes for worst case pattern:
+	 * "abcdefgh" (no operators)
+	 * and initialize all pointers to NULL */
+	union TastyState *const restrict state_alloc
+	= calloc(length_pattern,
+		 sizeof(union TastyState));
 
-	/* /1* allocate worst case length_pattern count of state nodes, allocate all */
-	/*  * pointers to NULL (i.e. no match) *1/ */
-	/* state_alloc = calloc(length_pattern, */
-	/* 		     sizeof(union TastyState)); */
+	if (UNLIKELY(state_alloc == NULL_POINTER)) {
+		free(patch_alloc);
+		return TASTY_ERROR_OUT_OF_MEMORY;
+	}
 
-	/* if (UNLIKELY(state_alloc == NULL_POINTER)) { */
-	/* 	free(chunk_base); */
-	/* 	return TASTY_ERROR_OUT_OF_MEMORY; */
-	/* } */
+	const int status = compile_pattern(regex,
+					   state_alloc,
+					   patch_alloc,
+					   pattern);
 
-	/* regex->initial	= state_alloc; */
+	if (status != 0)
+		free(state_alloc);
 
-	/* chunk	    = chunk_base; */
-	/* chunk_stack = chunk + 1l; */
-
-
-	/* regex->matching = state_alloc; */
-
-	/* free(chunk_base); */
-
-	return 0;
+	free(patch_alloc);
+	return status;
 }
 
 
