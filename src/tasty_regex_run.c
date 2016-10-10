@@ -185,7 +185,7 @@ acc_list_final_scan(struct TastyAccumulator *restrict acc,
 int
 tasty_regex_run(const struct TastyRegex *const restrict regex,
 		struct TastyMatchInterval *const restrict matches,
-		const unsigned char *restrict string)
+		const char *restrict string)
 {
 	struct TastyMatch *restrict match_alloc;
 	struct TastyAccumulator *restrict acc_alloc;
@@ -225,7 +225,7 @@ tasty_regex_run(const struct TastyRegex *const restrict regex,
 		push_next_acc(&acc_list,
 			      &acc_alloc,
 			      regex,
-			      string);
+			      (const unsigned char *) string);
 
 		++string;
 
@@ -237,14 +237,14 @@ tasty_regex_run(const struct TastyRegex *const restrict regex,
 		acc_list_process(&acc_list,
 				 &match_alloc,
 				 regex->matching,
-				 string);
+				 (const unsigned char *) string);
 	}
 
 	/* append matches found in acc_list */
 	acc_list_final_scan(acc_list,
 			    &match_alloc,
 			    regex->matching,
-			    string);
+			    (const unsigned char *) string);
 
 	/* close match interval */
 	matches->until = match_alloc;

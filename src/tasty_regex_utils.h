@@ -20,9 +20,9 @@ extern "C" {
 
 /* know string is at least 1 char long */
 inline size_t
-nonempty_string_length(const unsigned char *const restrict string)
+nonempty_string_length(const char *const restrict string)
 {
-	register const unsigned char *restrict until = string;
+	register const char *restrict until = string;
 
 	do {
 		++until;

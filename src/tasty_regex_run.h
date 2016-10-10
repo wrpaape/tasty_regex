@@ -32,7 +32,7 @@ struct TastyMatchInterval {
 int
 tasty_regex_run(const struct TastyRegex *const restrict regex,
 		struct TastyMatchInterval *const restrict matches,
-		const unsigned char *restrict string);
+		const char *restrict string);
 
 /* free allocations */
 inline void

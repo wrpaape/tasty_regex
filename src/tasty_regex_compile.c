@@ -863,7 +863,7 @@ compile_pattern(struct TastyRegex *const restrict regex,
 		regex->initial	= chunk.start;
 		regex->matching = state_alloc;
 
-		patch_states(&chunk.patches.head,
+		patch_states(chunk.patches.head,
 			     state_alloc);
 	}
 	return status;
@@ -874,7 +874,7 @@ compile_pattern(struct TastyRegex *const restrict regex,
  * ────────────────────────────────────────────────────────────────────────── */
 int
 tasty_regex_compile(struct TastyRegex *const restrict regex,
-		    const unsigned char *restrict pattern)
+		    const char *restrict pattern)
 {
 	if (*pattern == '\0')
 		return TASTY_ERROR_EMPTY_EXPRESSION;
@@ -904,7 +904,7 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 	const int status = compile_pattern(regex,
 					   state_alloc,
 					   patch_alloc,
-					   pattern);
+					   (const unsigned char *) pattern);
 
 	if (status != 0)
 		free(state_alloc);

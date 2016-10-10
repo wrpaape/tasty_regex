@@ -16,7 +16,7 @@ extern "C" {
  * ────────────────────────────────────────────────────────────────────────── */
 int
 tasty_regex_compile(struct TastyRegex *const restrict regex,
-		    const unsigned char *restrict pattern);
+		    const char *restrict pattern);
 
 /* free allocations */
 inline void
