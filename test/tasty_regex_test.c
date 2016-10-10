@@ -18,25 +18,23 @@ void test_tasty_regex(void)
 
 	TEST_ASSERT_EQUAL_INT(0,
 			      tasty_regex_compile(&regex,
-						  "ooga"));
-
-	puts("COMPILED"); fflush(stdout);
+						  "(ooga|boga) +boo"));
 
 	TEST_ASSERT_EQUAL_INT(0,
 			      tasty_regex_run(&regex,
 					      &matches,
-					      "boogity ooga booga boo ooga"));
+					      "boogity oogaoogaooga boo boga boo ooga"));
 
 	for (struct TastyMatch *restrict match = matches.from;
 	     match < matches.until;
 	     ++match) {
 		TEST_ASSERT_TRUE(write(STDOUT_FILENO,
 				       match->from,
-				       match->until - match->from) >= 0)
+				       match->until - match->from) >= 0);
 
 		TEST_ASSERT_TRUE(write(STDOUT_FILENO,
 				       "\n",
-				       sizeof("\n")) >= 0)
+				       sizeof("\n")) >= 0);
 	}
 
 

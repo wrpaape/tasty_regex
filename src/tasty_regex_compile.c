@@ -600,9 +600,15 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 
 	case '.': /* wild state, check for operator */
 		++pattern;
-		*state = set_wild_map[*pattern](state_alloc,
-						patch_alloc,
-						patch_head);
+		SetWild *const set_wild = set_wild_map[*pattern];
+
+		/* advance pattern if operator found */
+		if (set_wild != &wild_one)
+			++pattern;
+
+		*state = set_wild(state_alloc,
+				  patch_alloc,
+				  patch_head);
 		break;
 
 	case '\\':
@@ -614,10 +620,16 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 		/* fall through */
 	default: /* literal match state, check for operator */
 		++pattern;
-		*state = set_match_map[*pattern](state_alloc,
-						 patch_alloc,
-						 patch_head,
-						 token);
+		SetMatch *const set_match = set_match_map[*pattern];
+
+		/* advance pattern if operator found */
+		if (set_match != &match_one)
+			++pattern;
+
+		*state = set_match(state_alloc,
+				   patch_alloc,
+				   patch_head,
+				   token);
 	}
 
 	*pattern_ptr = pattern;
@@ -670,8 +682,7 @@ fetch_next_sub_chunk(struct TastyChunk *const restrict chunk,
 					patch_alloc,
 					pattern_ptr);
 			break;
-		}
-		/* fall through */
+		} /* fall through */
 	default: /* error */
 		return status;
 	}
