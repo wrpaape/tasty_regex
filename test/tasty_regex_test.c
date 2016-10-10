@@ -2,15 +2,18 @@
 #include "tasty_regex.h"
 #include <unistd.h>
 
-void setUp(void)
+void
+setUp(void)
 {
 }
 
-void tearDown(void)
+void
+tearDown(void)
 {
 }
 
-void test_tasty_regex(void)
+void
+test_tasty_regex(void)
 {
 	struct TastyRegex regex;
 	struct TastyMatchInterval matches;
@@ -18,12 +21,12 @@ void test_tasty_regex(void)
 
 	TEST_ASSERT_EQUAL_INT(0,
 			      tasty_regex_compile(&regex,
-						  "(ooga|boga)*"));
+						  "ba?a?ab"));
 
 	TEST_ASSERT_EQUAL_INT(0,
 			      tasty_regex_run(&regex,
 					      &matches,
-					      "boogity oogaoogaooga boo boga boo ooga"));
+					      "baaababa"));
 
 	for (struct TastyMatch *restrict match = matches.from;
 	     match < matches.until;

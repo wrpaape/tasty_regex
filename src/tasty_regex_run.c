@@ -50,6 +50,8 @@ push_next_acc(struct TastyAccumulator *restrict *const restrict acc_list,
 			    || (next_state == regex->matching))
 				return;
 
+			state = next_state;
+
 		/* explicit match */
 		} else {
 			/* pop a fresh accumulator node */
@@ -112,19 +114,33 @@ acc_list_process(struct TastyAccumulator *restrict *restrict acc_ptr,
 
 		/* step to next state */
 		} else {
-			next_state = state->step[*string];
 
-			/* if no match on string */
-			if (next_state == NULL_POINTER) {
-				/* check skip route */
-				next_state = state->skip;
+			while (1) {
+				next_state = state->step[*string];
 
-				/* if DNE */
+				/* if no match on string */
 				if (next_state == NULL_POINTER) {
-					/* remove acc from list */
-					acc	 = acc->next;
-					*acc_ptr = acc;
-					continue;
+					/* check skip route */
+					next_state = state->skip;
+
+					/* if DNE */
+					if (next_state == NULL_POINTER) {
+						/* remove acc from list */
+						acc	 = acc->next;
+						*acc_ptr = acc;
+						break;
+
+					} else if (next_state == matching) {
+						/* push new match */
+						push_match(match_alloc,
+							   acc->match_from,
+							   string);
+
+						/* remove acc from list */
+						acc	 = acc->next;
+						*acc_ptr = acc;
+						break;
+					}
 				}
 			}
 
