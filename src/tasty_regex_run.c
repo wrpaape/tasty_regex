@@ -114,7 +114,6 @@ acc_list_process(struct TastyAccumulator *restrict *restrict acc_ptr,
 
 		/* step to next state */
 		} else {
-
 			while (1) {
 				next_state = state->step[*string];
 
@@ -130,6 +129,8 @@ acc_list_process(struct TastyAccumulator *restrict *restrict acc_ptr,
 						*acc_ptr = acc;
 						break;
 
+					/* if skipped all the way to end w/o
+					 * explicit match, close match */
 					} else if (next_state == matching) {
 						/* push new match */
 						push_match(match_alloc,
@@ -141,14 +142,21 @@ acc_list_process(struct TastyAccumulator *restrict *restrict acc_ptr,
 						*acc_ptr = acc;
 						break;
 					}
+
+					/* continue looking for explicit
+					 * match */
+					state = next_state;
+
+				} else {
+					/* update accumulator state and
+					 * traversal vars */
+					acc->state = next_state;
+
+					acc_ptr = &acc->next;
+					acc	= acc->next;
+					break;
 				}
 			}
-
-			/* update accumulator state and traversal vars */
-			acc->state = next_state;
-
-			acc_ptr = &acc->next;
-			acc	= acc->next;
 		}
 	}
 }
