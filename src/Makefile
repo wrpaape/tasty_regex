@@ -387,13 +387,13 @@ TASTY_REGEX_TEST_BIN		:= $(call TEST_BINARY_PATH,tasty_regex)
 TASTY_REGEX_TRNR_SRC_PREQS	:= $(TASTY_REGEX_TEST_SRC)		\
 				   $(TEST_RUNNER_SOURCE_DIR)
 TASTY_REGEX_TEST_OBJ_PREQS	:= $(TASTY_REGEX_TEST_SRC)		\
-			   	   $(TASTY_REGEX_OBJ_PREQS) 		\
+				   $(TASTY_REGEX_HDR)			\
 			   	   $(UNITY_OBJ_PREQS)
 TASTY_REGEX_TRNR_OBJ_PREQS	:= $(TASTY_REGEX_TRNR_SRC)		\
 			   	   $(TASTY_REGEX_TEST_OBJ_PREQS)
 TASTY_REGEX_TEST_BIN_PREQS	:= $(TASTY_REGEX_TRNR_OBJ)		\
 				   $(TASTY_REGEX_TEST_OBJ)		\
-			   	   $(TASTY_REGEX_OBJ_GROUP)		\
+			   	   $(TASTY_REGEX_STATIC)		\
 			   	   $(UNITY_OBJ)
 # ─────────────── targets ──────────────────────────────────────────────────────
 TEST_BINARIES			+= $(TASTY_REGEX_TEST_BIN)

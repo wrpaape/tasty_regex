@@ -664,8 +664,13 @@ fetch_next_sub_chunk(struct TastyChunk *const restrict chunk,
 					      state_alloc,
 					      patch_alloc,
 					      pattern_ptr);
-		if (status == 0)
+		if (status == 0) {
+			close_sub_chunk(chunk,
+					state_alloc,
+					patch_alloc,
+					pattern_ptr);
 			break;
+		}
 		/* fall through */
 	default: /* error */
 		return status;
@@ -703,14 +708,10 @@ fetch_next_sub_chunk(struct TastyChunk *const restrict chunk,
 						      state_alloc,
 						      patch_alloc,
 						      pattern_ptr);
-			if (status == 0) {
+			if (status == 0)
 				merge_chunks(chunk,
 					     &next_chunk);
-				close_sub_chunk(chunk,
-						state_alloc,
-						patch_alloc,
-						pattern_ptr);
-			}
+
 			return status;
 
 		case TASTY_CONTROL_PARENTHESES_OPEN:
@@ -720,6 +721,10 @@ fetch_next_sub_chunk(struct TastyChunk *const restrict chunk,
 						      patch_alloc,
 						      pattern_ptr);
 			if (status == 0) {
+				close_sub_chunk(&next_chunk,
+						state_alloc,
+						patch_alloc,
+						pattern_ptr);
 				concat_chunks(chunk,
 					      &next_chunk);
 				continue;
@@ -758,6 +763,7 @@ fetch_next_chunk(struct TastyChunk *const restrict chunk,
 		break;
 
 	case TASTY_CONTROL_OR_BAR:
+	case TASTY_CONTROL_END_OF_PATTERN:
 		return TASTY_ERROR_EMPTY_EXPRESSION;
 
 	case TASTY_CONTROL_PARENTHESES_CLOSE:
@@ -769,8 +775,13 @@ fetch_next_chunk(struct TastyChunk *const restrict chunk,
 					      state_alloc,
 					      patch_alloc,
 					      pattern_ptr);
-		if (status == 0)
+		if (status == 0) {
+			close_sub_chunk(chunk,
+					state_alloc,
+					patch_alloc,
+					pattern_ptr);
 			break;
+		}
 		/* fall through */
 	default: /* error */
 		return status;
@@ -819,6 +830,10 @@ fetch_next_chunk(struct TastyChunk *const restrict chunk,
 						      patch_alloc,
 						      pattern_ptr);
 			if (status == 0) {
+				close_sub_chunk(&next_chunk,
+						state_alloc,
+						patch_alloc,
+						pattern_ptr);
 				concat_chunks(chunk,
 					      &next_chunk);
 				continue;
@@ -835,7 +850,23 @@ compile_pattern(struct TastyRegex *const restrict regex,
 		struct TastyPatch *restrict patch_alloc,
 		const unsigned char *restrict pattern)
 {
-	return 0;
+
+	struct TastyChunk chunk;
+	int status;
+
+	status = fetch_next_chunk(&chunk,
+				  &state_alloc,
+				  &patch_alloc,
+				  &pattern);
+
+	if (status == 0) {
+		regex->initial	= chunk.start;
+		regex->matching = state_alloc;
+
+		patch_states(&chunk.patches.head,
+			     state_alloc);
+	}
+	return status;
 }
 
 
