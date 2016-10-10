@@ -18,7 +18,7 @@ void test_tasty_regex(void)
 
 	TEST_ASSERT_EQUAL_INT(0,
 			      tasty_regex_compile(&regex,
-						  "(ooga|boga) +boo"));
+						  "(ooga|boga)*"));
 
 	TEST_ASSERT_EQUAL_INT(0,
 			      tasty_regex_run(&regex,
