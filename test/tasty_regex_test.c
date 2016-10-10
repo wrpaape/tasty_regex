@@ -21,12 +21,12 @@ test_tasty_regex(void)
 
 	TEST_ASSERT_EQUAL_INT(0,
 			      tasty_regex_compile(&regex,
-						  "(ba?a?a?b)*ao"));
+						  "(ba?a?a?b|o?o)*ao"));
 
 	TEST_ASSERT_EQUAL_INT(0,
 			      tasty_regex_run(&regex,
 					      &matches,
-					      "baabbabaooobbbabb"));
+					      "baabbabaoooaobbbabb"));
 
 	for (struct TastyMatch *restrict match = matches.from;
 	     match < matches.until;
