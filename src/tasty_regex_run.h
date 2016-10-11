@@ -16,8 +16,8 @@ extern "C" {
  * ────────────────────────────────────────────────────────────────────────── */
 /* defines an match interval on a string: from ≤ token < until */
 struct TastyMatch {
-	const unsigned char *restrict from;
-	const unsigned char *restrict until;
+	const char *restrict from;
+	const char *restrict until;
 };
 
 /* defines an array of matches: from ≤ match < until */

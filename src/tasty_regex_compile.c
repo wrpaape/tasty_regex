@@ -1041,6 +1041,7 @@ compile_pattern(struct TastyRegex *const restrict regex,
 		patch_states(chunk.patches.head,
 			     state_alloc);
 	}
+
 	return status;
 }
 
@@ -1085,6 +1086,7 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 		free(state_alloc);
 
 	free(patch_alloc);
+
 	return status;
 }
 

@@ -81,8 +81,8 @@ push_match(struct TastyMatch *restrict *const restrict match_alloc,
 	++(*match_alloc);
 
 	/* populate */
-	match->from  = from;
-	match->until = until;
+	match->from  = (const char *) from;
+	match->until = (const char *) until;
 }
 
 

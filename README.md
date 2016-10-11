@@ -17,13 +17,64 @@ Matching via `tasty_regex_run` is *greedy* (match as many characters as possible
 
 ##Usage
 
+###tasty_regex_compile
 
+####"Compile" a regular expression, `regex`, from an input `pattern`.
+```
+int
+tasty_regex_compile(struct TastyRegex *const restrict regex,
+                    const char *restrict pattern);
+
+```
+
+| Return Value                         | Description                                                                               |
+| :----------------------------------: | :---------------------------------------------------------------------------------------- |
+| `0`                                  | compiled successfully                                                                     |
+| `TASTY_ERROR_OUT_OF_MEMORY`          | failed to allocate sufficient memory                                                      |
+| `TASTY_ERROR_EMPTY_EXPRESSION`	     | empty `pattern` or subexpression (i.e. `()`, `||`, '|)', etc ...)                         |
+| `TASTY_ERROR_UNBALANCED_PARENTHESES` | unbalanced parentheses (i.e. `((ab)`, `aab)`, etc ...)                                    |
+| `TASTY_ERROR_INVALID_ESCAPE`	       | character following `\` is not in set `?*+|.()\`                                          |
+| `TASTY_ERROR_NO_OPERAND`		         | no matchable expression preceeding '?', '*', or '+' (i.e. `*abc`, 'b|?b', 'a++', etc ...) |
+| `TASTY_ERROR_INVALID_UTF8`	         | `pattern` includes at least 1 invalid (non-UTF8) byte sequence                            |
+
+If `0` is returned, compilation succeeded and `regex`'s internals (see [Implementation](#implementation)) are allocated on the heap
+
+```
+
+extern inline void
+tasty_regex_free(struct TastyRegex *const restrict regex);
+```
+
+
+```
+int
+tasty_regex_run(const struct TastyRegex *const restrict regex,
+		struct TastyMatchInterval *const restrict matches,
+		const char *restrict string);
+
+extern inline void
+tasty_match_interval_free(struct TastyMatchInterval *const restrict matches);
+```
+
+```
+/* defines an match interval on a string: from ≤ token < until */
+struct TastyMatch {
+        const char *restrict from;
+        const char *restrict until;
+};
+
+/* defines an array of matches: from ≤ match < until */
+struct TastyMatchInterval {
+        struct TastyMatch *restrict from;
+        struct TastyMatch *restrict until;
+};
+```
 
 ##Build
 
 
 
-##Implementation
+##Implementation {#implementation}
 Under the hood `tasty_regex` "compile"s an input `pattern` into a deterministic finite automaton (DFA), a graph data structure that can be traversed alongside an input `string` to efficiently locate matches:
 
 ```
@@ -81,13 +132,13 @@ struct TastyRegex {
                     │        └─────────┘
                     ↓
                   ( TastyState )
-                    │   │    │
         ┌───────────┘   │    └────────────────┐
 [match '\0 + 1'] [match '\0 + 2'] ... [match 'UCHAR_MAX']
         │               │                     │
         ↓               ↓                     ↓
      matching        matching              matching
 ```
-where links labeled  `[match 'CHAR']` represent explicit character matches and `[skip]` links represent a valid non-matching path.
+where links labeled  `[match 'CHAR']` represent explicit character matches and `[skip]` links represent a valid non-matching path. A list of accumulating matches is updated while an input `string` is traversed one character at a time (without backtracking).
+A `TastyMatch` is populated and added to the `TastyMatchInterval` when an accumulating match has traversed the entirety of the compiled DFA.
 
 While this implementation PCRE *O*(*mn*)
