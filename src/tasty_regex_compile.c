@@ -308,7 +308,7 @@ join_wild_state(union TastyState *const restrict wild_state,
 
 /* fundamental state elements
  * ────────────────────────────────────────────────────────────────────────── */
-static union TastyState *
+static inline union TastyState *
 match_one(union TastyState *restrict *const restrict state_alloc,
 	  struct TastyPatch *restrict *const restrict patch_alloc,
 	  struct TastyPatch *restrict *const restrict patch_head,
@@ -333,7 +333,7 @@ match_one(union TastyState *restrict *const restrict state_alloc,
 	return state;
 }
 
-static union TastyState *
+static inline union TastyState *
 wild_one(union TastyState *restrict *const restrict state_alloc,
 	 struct TastyPatch *restrict *const restrict patch_alloc,
 	 struct TastyPatch *restrict *const restrict patch_head)
@@ -351,8 +351,26 @@ wild_one(union TastyState *restrict *const restrict state_alloc,
 	return state;
 }
 
+static inline inline void
+match_wide_one(union TastyState *const restrict state_last,
+	       struct TastyPatch *restrict *const restrict patch_alloc,
+	       struct TastyPatch *restrict *const restrict patch_head,
+	       const unsigned char token)
+{
+	/* pop patch node */
+	struct TastyPatch *const restrict patch = *patch_alloc;
+	++(*patch_alloc);
 
-static union TastyState *
+	/* record pointer needing to be set */
+	patch->state = &state_last->step[token];
+
+	/* push patch into head of patch_list */
+	patch->next = *patch_head;
+	*patch_head = patch;
+}
+
+
+static inline union TastyState *
 match_zero_or_one(union TastyState *restrict *const restrict state_alloc,
 		  struct TastyPatch *restrict *const restrict patch_alloc,
 		  struct TastyPatch *restrict *const restrict patch_head,
@@ -391,7 +409,7 @@ match_zero_or_one(union TastyState *restrict *const restrict state_alloc,
 }
 
 
-static union TastyState *
+static inline union TastyState *
 wild_zero_or_one(union TastyState *restrict *const restrict state_alloc,
 		 struct TastyPatch *restrict *const restrict patch_alloc,
 		 struct TastyPatch *restrict *const restrict patch_head)
@@ -422,7 +440,7 @@ wild_zero_or_one(union TastyState *restrict *const restrict state_alloc,
 	return state;
 }
 
-static union TastyState *
+static inline union TastyState *
 match_zero_or_more(union TastyState *restrict *const restrict state_alloc,
 		   struct TastyPatch *restrict *const restrict patch_alloc,
 		   struct TastyPatch *restrict *const restrict patch_head,
@@ -450,7 +468,7 @@ match_zero_or_more(union TastyState *restrict *const restrict state_alloc,
 	return state;
 }
 
-static union TastyState *
+static inline union TastyState *
 wild_zero_or_more(union TastyState *restrict *const restrict state_alloc,
 		  struct TastyPatch *restrict *const restrict patch_alloc,
 		  struct TastyPatch *restrict *const restrict patch_head)
@@ -479,7 +497,7 @@ wild_zero_or_more(union TastyState *restrict *const restrict state_alloc,
 }
 
 
-static union TastyState *
+static inline union TastyState *
 match_one_or_more(union TastyState *restrict *const restrict state_alloc,
 		  struct TastyPatch *restrict *const restrict patch_alloc,
 		  struct TastyPatch *restrict *const restrict patch_head,
@@ -513,7 +531,7 @@ match_one_or_more(union TastyState *restrict *const restrict state_alloc,
 	return state_one;
 }
 
-static union TastyState *
+static inline union TastyState *
 wild_one_or_more(union TastyState *restrict *const restrict state_alloc,
 		  struct TastyPatch *restrict *const restrict patch_alloc,
 		  struct TastyPatch *restrict *const restrict patch_head)
@@ -606,7 +624,6 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 	union TastyState *restrict state_next;
 
 	union TastyState *const restrict state_first = *state_alloc;
-
 	state_prev = state_first;
 
 	pattern = *pattern_ptr;
@@ -640,10 +657,11 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 		token = *pattern;
 
 	case 1u:
-		break;
+		break; /* ASCII character found */
 	default:
 		return TASTY_ERROR_INVALID_UTF8;
 	}
+
 
 	/* fetch token */
 	switch (token) {
@@ -666,12 +684,27 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 		SetWild *const set_wild = set_wild_map[*pattern];
 
 		/* advance pattern if operator found */
-		if (set_wild != &wild_one)
+		/* if (set_wild != &wild_one) */
+		/* 	++pattern; */
+
+		/* *state = set_wild(state_alloc, */
+		/* 		  patch_alloc, */
+		/* 		  patch_head); */
+
+		switch (*pattern) {
+		case '*':
 			++pattern;
 
-		*state = set_wild(state_alloc,
-				  patch_alloc,
-				  patch_head);
+		case '+':
+			++pattern;
+		case '?':
+			++pattern;
+
+		default:
+			wild_one()
+
+		}
+
 		break;
 
 	case '\\':

@@ -13,6 +13,14 @@
 | `()`     | `(xyz)` | declare a matching expression *xyz*     |
 | `\`      | `\x`    | escape character *x* in set `?*+|.()\`  |
 
+Matching via `tasty_regex_run` is *greedy* (match as many characters as possible) and *global* (all valid matches are recorded).
+
+##Usage
+
+
+
+##Build
+
 
 
 ##Implementation
@@ -34,51 +42,52 @@ struct TastyRegex {
 
 `TastyState` nodes are linked according the `pattern` specification in a roughly linear fashion. For example, the `pattern` "ab?c*(de|dfg)+." would compile to the DFA:
 ```
-                              initial
-                                 │
-                                 ↓
-                           ( TastyState )
-                                 │
-                            [match 'a']
-                                 │
-                                 ↓
-                           ( TastyState )
-                             │        │
-                           skip  [match 'b']
-                             │        │
-                             ↓        ↓
-                           ( TastyState )←────┐
-                             │        │       │
-                           skip  [match 'c']  │
-                             │        └───────┘
-                             ↓
-                           ( TastyState )
-                                 |
-                            [match 'd']
-                                 |
-                                 ↓
-                           ( TastyState )←──────┐
-                             │        │         │
-                       [match 'e'] [match 'f']  │
-                             │        │         │
-                             │        ↓         │
-                             │  ( TastyState )  │
-                             │        │         │
-                             │   [match 'g']    │
-                             │        │         │
-                             ↓        ↓         │
-                           ( TastyState )       │
-                             │        │         │
-                           skip  [match 'd']    │
-                             │        └─────────┘
-                             ↓
-                           ( TastyState )
-                             │   │    │
-                 ┌───────────┘   │    └────────────────┐
-         [match '\0 + 1'] [match '\0 + 2'] ... [match 'UCHAR_MAX']
-                 │               │                     │
-                 ↓               ↓                     ↓
-              matching        matching              matching
+                     initial
+                        │
+                        ↓
+                  ( TastyState )
+                        │
+                   [match 'a']
+                        │
+                        ↓
+                  ( TastyState )
+                    │        │
+                 [skip] [match 'b']
+                    │        │
+                    ↓        ↓
+                  ( TastyState )←────┐
+                    │        │       │
+                 [skip] [match 'c']  │
+                    │        └───────┘
+                    ↓
+                  ( TastyState )
+                        |
+                   [match 'd']
+                        |
+                        ↓
+                  ( TastyState )←──────┐
+                    │        │         │
+              [match 'e'] [match 'f']  │
+                    │        │         │
+                    │        ↓         │
+                    │  ( TastyState )  │
+                    │        │         │
+                    │   [match 'g']    │
+                    │        │         │
+                    ↓        ↓         │
+                  ( TastyState )       │
+                    │        │         │
+                 [skip] [match 'd']    │
+                    │        └─────────┘
+                    ↓
+                  ( TastyState )
+                    │   │    │
+        ┌───────────┘   │    └────────────────┐
+[match '\0 + 1'] [match '\0 + 2'] ... [match 'UCHAR_MAX']
+        │               │                     │
+        ↓               ↓                     ↓
+     matching        matching              matching
 ```
+where links labeled  `[match 'CHAR']` represent explicit character matches and `[skip]` links represent a valid non-matching path.
 
 While this implementation PCRE *O*(*mn*)
