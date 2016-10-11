@@ -19,14 +19,13 @@ Matching via `tasty_regex_run` is *greedy* (match as many characters as possible
 
 ###tasty_regex_compile
 
-####"Compile" a regular expression, `regex`, from an input `pattern`.
+####"Compile"s a regular expression, `regex`, from an input `pattern`
 ```
 int
 tasty_regex_compile(struct TastyRegex *const restrict regex,
                     const char *restrict pattern);
 
 ```
-
 | Return Value                         | Description                                                                               |
 | :----------------------------------: | :---------------------------------------------------------------------------------------- |
 | `0`                                  | compiled successfully                                                                     |
@@ -37,12 +36,52 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 | `TASTY_ERROR_NO_OPERAND`		         | no matchable expression preceeding '?', '*', or '+' (i.e. `*abc`, 'b|?b', 'a++', etc ...) |
 | `TASTY_ERROR_INVALID_UTF8`	         | `pattern` includes at least 1 invalid (non-UTF8) byte sequence                            |
 
-If `0` is returned, compilation succeeded and `regex`'s internals (see [Implementation](#implementation)) are allocated on the heap
+**example**  
+```
+struct TastyRegex good_regex;
+struct TastyRegex bad_regex;
+int status;
 
+status = tasty_regex_compile(&good_regex,
+                             "(apples)*|oranges"); /* should succeed (return 0) */
+
+if (status != 0) {
+        /* handle failure */
+}
+
+status = tasty_regex_compile(&bad_regex,
+                             "I forgot to close my (parentheses"); /* should fail (return TASTY_ERROR_UNBALANCED_PARENTHESES) */
+
+if (status != 0) {
+        /* handle failure */
+}
 ```
 
+If `0` is returned, compilation succeeded and `regex`'s internals (see [Implementation](#implementation)) have been allocated onto the heap. To avoid memory leaks, all calls to `tasty_regex_compile` must be paired with `tasty_regex_free`:  
+
+
+###tasty_regex_free
+
+####Frees dynamically-allocated memory after a successful call to `tasty_regex_compile`
+```
 extern inline void
 tasty_regex_free(struct TastyRegex *const restrict regex);
+```
+**example**  
+```
+struct TastyRegex regex;
+int status;
+
+status = tasty_regex_compile(&regex,
+                             "b?oogity");
+
+if (status != 0) {
+        /* handle failure */
+}
+
+/* pattern matching stuff */
+
+tasty_regex_free(&regex);
 ```
 
 
@@ -74,7 +113,7 @@ struct TastyMatchInterval {
 
 
 
-##Implementation {#implementation}
+##Implementation
 Under the hood `tasty_regex` "compile"s an input `pattern` into a deterministic finite automaton (DFA), a graph data structure that can be traversed alongside an input `string` to efficiently locate matches:
 
 ```
