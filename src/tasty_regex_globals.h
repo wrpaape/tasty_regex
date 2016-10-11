@@ -10,7 +10,15 @@ extern "C" {
 /* external dependencies
  * ────────────────────────────────────────────────────────────────────────── */
 #include <stdlib.h>	/* size_t, m|calloc, free */
-#include <limits.h>	/* UCHAR_MAX */
+#include <limits.h>	/* UCHAR_MAX, CHAR_BIT */
+
+
+/* /1* system check */
+/*  * ────────────────────────────────────────────────────────────────────────── *1/ */
+/* #if (CHAR_BIT != 8) */
+/* #	error "system 'CHAR_BIT' not supported (char is not 8 bits)" */
+/* #endif /1* if (CHAR_BIT != 8) *1/ */
+
 
 /* error macros
  * ────────────────────────────────────────────────────────────────────────── */
@@ -19,6 +27,7 @@ extern "C" {
 #define TASTY_ERROR_UNBALANCED_PARENTHESES 3 /* parentheses not balanced */
 #define TASTY_ERROR_INVALID_ESCAPE	   4 /* \[unescapeable char] */
 #define TASTY_ERROR_NO_OPERAND		   5 /* [*+?] preceeded by nothing */
+#define TASTY_ERROR_INVALID_UTF8	   6 /* invalid UTF8 code point */
 
 
 /* typedefs, struct declarations

@@ -49,6 +49,28 @@ struct TastyOrNode {
 
 /* helper functions
  * ────────────────────────────────────────────────────────────────────────── */
+static inline unsigned int
+utf8_head_width(const unsigned char head)
+{
+	if ((head & 0x80) == 0x00)
+		return 1u;	/* ASCII character*/
+
+	if ((head & 0x40) == 0x00)
+		return 0u;	/* 10xxxxxx (not utf8) */
+
+	if ((head & 0x20) == 0x00)
+		return 2u;	/* 110xxxxx */
+
+	if ((head & 0x10) == 0x00)
+		return 3u;	/* 1110xxxx */
+
+	if ((head & 0x08) == 0x00)
+		return 4u;	/* 11110xxx */
+
+	return 0u; /* 11111xxx (not utf8) */
+}
+
+
 static inline void
 patch_states(struct TastyPatch *restrict patch,
 	     union TastyState *const restrict state)
@@ -580,9 +602,48 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 
 	const unsigned char *restrict pattern;
 	unsigned char token;
+	union TastyState *restrict state_prev;
+	union TastyState *restrict state_next;
+
+	union TastyState *const restrict state_first = *state_alloc;
+
+	state_prev = state_first;
 
 	pattern = *pattern_ptr;
 	token   = *pattern;
+
+	const unsigned int width_token = utf8_head_width(token);
+
+	switch (width_token) {
+	case 4u:
+		state_next = state_prev + 1l;
+		state_prev->step[token] = state_next;
+		state_prev = state_next;
+
+		++pattern;
+		token = *pattern;
+		/* fall through */
+	case 3u:
+		state_next = state_prev + 1l;
+		state_prev->step[token] = state_next;
+		state_prev = state_next;
+
+		++pattern;
+		token = *pattern;
+		/* fall through */
+	case 2u:
+		state_next = state_prev + 1l;
+		state_prev->step[token] = state_next;
+		*state_alloc += width_token;
+
+		++pattern;
+		token = *pattern;
+
+	case 1u:
+		break;
+	default:
+		return TASTY_ERROR_INVALID_UTF8;
+	}
 
 	/* fetch token */
 	switch (token) {
@@ -896,9 +957,8 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 
 	/* allocate buffer of patch nodes for worst case pattern:
 	 * "........" (all wild, no operators) */
-	const size_t count_steps = length_pattern * UCHAR_MAX;
 	struct TastyPatch *const restrict patch_alloc
-	= malloc(sizeof(struct TastyPatch) * count_steps);
+	= malloc(sizeof(struct TastyPatch) * (length_pattern * UCHAR_MAX));
 
 	if (UNLIKELY(patch_alloc == NULL_POINTER))
 		return TASTY_ERROR_OUT_OF_MEMORY;
@@ -907,27 +967,13 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 	 * "abcdefgh" (no operators)
 	 * and initialize all pointers to NULL */
 	union TastyState *const restrict state_alloc
-#if (NULL_POINTER == ((void *) 0))
 	= calloc(length_pattern,
 		 sizeof(union TastyState));
-#else
-	= malloc(length_pattern * sizeof(union TastyState));
-#endif /* if (NULL_POINTER == ((void *) 0)) */
 
 	if (UNLIKELY(state_alloc == NULL_POINTER)) {
 		free(patch_alloc);
 		return TASTY_ERROR_OUT_OF_MEMORY;
 	}
-
-#if (NULL_POINTER != ((void *) 0))
-	union TastyState *restrict *restrict state = &state_alloc->skip;
-	union TastyState *const restrict *restrict state_until
-	= state + count_steps;
-	do {
-		*state = NULL_POINTER;
-		++state;
-	} while (state < state_until);
-#endif /* if (NULL_POINTER != ((void *) 0)) */
 
 	const int status = compile_pattern(regex,
 					   state_alloc,
