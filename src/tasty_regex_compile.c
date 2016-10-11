@@ -411,7 +411,8 @@ wild_zero_or_one(union TastyState *const restrict state,
 }
 
 static inline void
-match_wide_zero_or_one(union TastyState *const restrict state_last,
+match_wide_zero_or_one(union TastyState *const restrict state_first,
+		       union TastyState *const restrict state_last,
 		       struct TastyPatch *restrict *const restrict patch_alloc,
 		       struct TastyPatch *restrict *const restrict patch_head,
 		       const unsigned char token_last)
@@ -423,7 +424,7 @@ match_wide_zero_or_one(union TastyState *const restrict state_last,
 	*patch_alloc += 2l; /* account for second patch */
 
 	/* record skip pointer needing to be set */
-	patch->state = &state_last->skip;
+	patch->state = &state_first->skip;
 
 	/* push patch into head of patch_list */
 	patch->next = *patch_head;
@@ -495,7 +496,7 @@ match_wide_zero_or_more(union TastyState *const restrict state_first,
 	++(*patch_alloc);
 
 	/* record skip pointer needing to be set */
-	patch->state = &state_last->skip;
+	patch->state = &state_first->skip;
 
 	/* push patch into head of patch_list */
 	patch->next = *patch_head;
@@ -601,36 +602,6 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 		 struct TastyPatch *restrict *const restrict patch_head,
 		 const unsigned char *restrict *const restrict pattern_ptr)
 {
-	/* /1* cached maps *1/ */
-	/* typedef union TastyState * */
-	/* SetMatch(union TastyState *restrict *const restrict state_alloc, */
-	/* 	 struct TastyPatch *restrict *const restrict patch_alloc, */
-	/* 	 struct TastyPatch *restrict *const restrict patch_head, */
-	/* 	 const unsigned char token); */
-
-	/* static SetMatch *const set_match_map[UCHAR_MAX + 1] = { */
-	/* 	['\0' ... ')']	     = &match_one, */
-	/* 	['*']		     = &match_zero_or_more, */
-	/* 	['+']		     = &match_one_or_more, */
-	/* 	[','  ... '>']	     = &match_one, */
-	/* 	['?']		     = &match_zero_or_one, */
-	/* 	['@' ...  UCHAR_MAX] = &match_one */
-	/* }; */
-
-	/* typedef union TastyState * */
-	/* SetWild(union TastyState *restrict *const restrict state_alloc, */
-	/* 	struct TastyPatch *restrict *const restrict patch_alloc, */
-	/* 	struct TastyPatch *restrict *const restrict patch_head); */
-
-	/* static SetWild *const set_wild_map[UCHAR_MAX + 1] = { */
-	/* 	['\0' ... ')']	     = &wild_one, */
-	/* 	['*']		     = &wild_zero_or_more, */
-	/* 	['+']		     = &wild_one_or_more, */
-	/* 	[','  ... '>']	     = &wild_one, */
-	/* 	['?']		     = &wild_zero_or_one, */
-	/* 	['@' ...  UCHAR_MAX] = &wild_one */
-	/* }; */
-
 	static const bool valid_escape_map[UCHAR_MAX + 1] = {
 		['\\'] = true,
 		['*']  = true,
@@ -670,7 +641,6 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 		/* fall through */
 	case 2u:
 		state_prev->step[*pattern] = state_next;
-		++state_next;
 		++pattern;
 		const unsigned char token_last = *pattern;
 
@@ -701,7 +671,8 @@ fetch_next_state(union TastyState *restrict *const restrict state,
 		case '?':
 			*pattern_ptr = pattern + 1l;
 			*state_alloc = state_next + 1l; /* pop state nodes */
-			match_wide_zero_or_one(state_next,
+			match_wide_zero_or_one(state_first,
+					       state_next,
 					       patch_alloc,
 					       patch_head,
 					       token_last);

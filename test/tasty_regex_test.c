@@ -21,12 +21,12 @@ test_tasty_regex(void)
 
 	TEST_ASSERT_EQUAL_INT(0,
 			      tasty_regex_compile(&regex,
-						  "(ba?a?a?b|oo?)*ao"));
+						  "そ*abc"));
 
 	TEST_ASSERT_EQUAL_INT(0,
 			      tasty_regex_run(&regex,
 					      &matches,
-					      "baabbabobbbbaobbbabb"));
+					      "そそそそそそabcaooga boogaabc aabc"));
 
 	tasty_regex_free(&regex);
 
