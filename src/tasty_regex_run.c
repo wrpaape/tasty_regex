@@ -147,6 +147,7 @@ acc_list_process(struct TastyAccumulator *restrict *restrict acc_ptr,
 					 * match */
 					state = next_state;
 
+				/* explicit match found, update acc */
 				} else {
 					/* update accumulator state and
 					 * traversal vars */

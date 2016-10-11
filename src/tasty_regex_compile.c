@@ -12,6 +12,8 @@
 #	define NULL_POINTER NULL    /* use traditional c null pointer macro */
 #endif /* ifdef __cplusplus */
 
+
+
 #define TASTY_CONTROL_END_OF_PATTERN	-1
 #define TASTY_CONTROL_PARENTHESES_OPEN	-2
 #define TASTY_CONTROL_PARENTHESES_CLOSE	-3
@@ -894,8 +896,9 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 
 	/* allocate buffer of patch nodes for worst case pattern:
 	 * "........" (all wild, no operators) */
+	const size_t count_steps = length_pattern * UCHAR_MAX;
 	struct TastyPatch *const restrict patch_alloc
-	= malloc(sizeof(struct TastyPatch) * (length_pattern * UCHAR_MAX));
+	= malloc(sizeof(struct TastyPatch) * count_steps);
 
 	if (UNLIKELY(patch_alloc == NULL_POINTER))
 		return TASTY_ERROR_OUT_OF_MEMORY;
@@ -904,13 +907,27 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 	 * "abcdefgh" (no operators)
 	 * and initialize all pointers to NULL */
 	union TastyState *const restrict state_alloc
+#if (NULL_POINTER == ((void *) 0))
 	= calloc(length_pattern,
 		 sizeof(union TastyState));
+#else
+	= malloc(length_pattern * sizeof(union TastyState));
+#endif /* if (NULL_POINTER == ((void *) 0)) */
 
 	if (UNLIKELY(state_alloc == NULL_POINTER)) {
 		free(patch_alloc);
 		return TASTY_ERROR_OUT_OF_MEMORY;
 	}
+
+#if (NULL_POINTER != ((void *) 0))
+	union TastyState *restrict *restrict state = &state_alloc->skip;
+	union TastyState *const restrict *restrict state_until
+	= state + count_steps;
+	do {
+		*state = NULL_POINTER;
+		++state;
+	} while (state < state_until);
+#endif /* if (NULL_POINTER != ((void *) 0)) */
 
 	const int status = compile_pattern(regex,
 					   state_alloc,
