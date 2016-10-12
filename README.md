@@ -1,7 +1,7 @@
 # tasty_regex
 
 ##Overview
-`tasty_regex` is a simplified, light-weight regular expression library that guarantees worst-case *O*(*mn*) performance where  
+`tasty_regex` is a light-weight regular expression engine that guarantees worst-case *O*(*mn*) performance where  
 *m* := *length*(`pattern`) and
 *n* := *length*(`string`).
 UTF8 patterns are supported along with the following operators:  
@@ -39,7 +39,7 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
 | `TASTY_ERROR_EMPTY_EXPRESSION`	     | empty `pattern` or subexpression (i.e. `()`, `&#124;&#124;`, `&#124;)`, etc ...)               |
 | `TASTY_ERROR_UNBALANCED_PARENTHESES` | unbalanced parentheses (i.e. `((ab)`, `aab)`, etc ...)                                         |
 | `TASTY_ERROR_INVALID_ESCAPE`	       | character following `\` is not in set `?*+&#124;.()\`                                          |
-| `TASTY_ERROR_NO_OPERAND`		         | no matchable expression preceeding '?', '*', or '+' (i.e. `*abc`, 'b&#124;?b', 'a++', etc ...) |
+| `TASTY_ERROR_NO_OPERAND`		         | no matchable expression preceeding `?`, `*`, or `+` (i.e. `*abc`, `b&#124;?b`, `a++`, etc ...) |
 | `TASTY_ERROR_INVALID_UTF8`	         | `pattern` includes at least 1 invalid (non-UTF8) byte sequence                                 |
 
 **example**  
@@ -260,3 +260,7 @@ where links labeled  `[match 'CHAR']` represent explicit character matches and `
 A `TastyMatch` is populated and added to the `TastyMatchInterval` when an accumulating match has traversed the entirety of the compiled DFA.
 
 While this implementation PCRE *O*(*mn*)
+
+
+##Comparison to Pearl-Compatible Regular Expression (PCRE) Engines
+PCRE engines employed in Perl, Python, PHP, Ruby, Java, and many other languages must rely on recursive backtracking to support nifty extensions (such as "backreferences"), and so they are subject to exponential blowup when matching "pathological" patterns against certain input strings. `tasty_regex`'s implementation borrows from the unix utilities 'awk' and 'grep'--a pattern is compiled down to an equivalent nondeterministic finite automaton (DFA) which is matched much like a substring against input strings. Though less sophisticated, this solution handles all supported pattern-string input pairs in time capped proportionally to the product of their lengths.
