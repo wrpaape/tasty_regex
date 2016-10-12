@@ -5,6 +5,7 @@
 *m* := *length*(`pattern`) and
 *n* := *length*(`string`).
 UTF8 patterns are supported along with the following operators:  
+
 | Operator | Use     | Description                             |
 | :------: | :-----: | :-------------------------------------- |
 | `?`      | `X?`    | match expression *X* zero or one time   |
@@ -16,6 +17,8 @@ UTF8 patterns are supported along with the following operators:
 | `\`      | `\x`    | escape character *x* in set `?*+|.()\`  |
 
 Matching via `tasty_regex_run` is *greedy* (match as many characters as possible) and *global* (all valid greedy matches are recorded).
+
+
 
 ##Usage
 
@@ -156,7 +159,7 @@ int status;
 
 /* should succeed (return 0) */
 status = tasty_regex_compile(&regex,
-                             "I .*(love|(dis)?like|hate) (cat|dog|gopher)s");
+                             "I (dis)?like (cat|dog|gopher)s");
 
 if (status != 0) {
         /* handle failure */
@@ -164,7 +167,7 @@ if (status != 0) {
 
 status = tasty_regex_run(&regex,
                          &matches,
-                         "I love cats, and I also like dogs, but I absolutely hate gophers");
+                         "I love cats, and I like dogs, but I hate gophers");
 
 tasty_regex_free(&regex);
 

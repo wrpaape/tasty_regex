@@ -89,6 +89,7 @@ concat_patches(struct TastyPatchList *const restrict patches1,
 	patches1->end_ptr    = patches2->end_ptr;
 }
 
+/* TODO: check that skip routes are properly flattened */
 static inline void
 merge_states(union TastyState *const restrict state1,
 	     union TastyState *const restrict state2)
