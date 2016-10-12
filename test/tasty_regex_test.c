@@ -21,12 +21,13 @@ test_tasty_regex(void)
 
 	TEST_ASSERT_EQUAL_INT(0,
 			      tasty_regex_compile(&regex,
-						  "そ*abc"));
+						  "Idogs"));
+						  /* "I.*(love|(dis)?like|hate) (cat|dog|gopher)s")); */
 
 	TEST_ASSERT_EQUAL_INT(0,
 			      tasty_regex_run(&regex,
 					      &matches,
-					      "そそそそそそabcaooga boogaabc aabc"));
+					      "I love cats, and I also like dogs, but I absolutely hate gophers"));
 
 	tasty_regex_free(&regex);
 

@@ -27,7 +27,7 @@ extern "C" {
 #define TASTY_ERROR_UNBALANCED_PARENTHESES 3 /* parentheses not balanced */
 #define TASTY_ERROR_INVALID_ESCAPE	   4 /* \[unescapeable char] */
 #define TASTY_ERROR_NO_OPERAND		   5 /* [*+?] preceeded by nothing */
-#define TASTY_ERROR_INVALID_UTF8	   6 /* invalid UTF8 code point */
+#define TASTY_ERROR_INVALID_UTF8	   6 /* non-UTF8 byte sequence */
 
 
 /* typedefs, struct declarations
