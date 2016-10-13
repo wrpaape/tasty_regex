@@ -110,6 +110,7 @@ merge_states(union TastyState *const restrict state1,
 
 		/* fork on same match (NFA), need to flatten branch */
 		} else if (*state2_from != NULL_POINTER) {
+			puts("merging awooga");
 			merge_states(*state1_from,
 				     *state2_from);
 		}
