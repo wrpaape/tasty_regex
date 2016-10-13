@@ -139,7 +139,7 @@ if (status != 0) {
         /* handle failure */
 }
 ```
-If `0` is returned, execution has succeeded and `matches` should refer to a freeable interval of `TastyMatch`s that describe all matching substrings for `regex` against input `string` (see [Traversing TastyMatchInterval](#traversing-TastyMatchInterval)). Accordingly, all calls to `tasty_regex_run` must be paired with `tasty_match_interval_free`:  
+If `0` is returned, execution has succeeded and `matches` should refer to a free-able interval of `TastyMatch`s that describe all matching substrings for `regex` against input `string` (see [Traversing Matches](#traversing-matches)). Accordingly, all calls to `tasty_regex_run` must be paired with `tasty_match_interval_free`:  
 
 
 
@@ -165,29 +165,76 @@ if (status != 0) {
         /* handle failure */
 }
 
+
+/* should succeed (return 0) and match accordingly:
+ * ├─────────┤
+ *                  ├─────────┤
+ *                                   ├───────────────┤
+ * I love cats, and I like dogs, but I dislike gophers
+ */
 status = tasty_regex_run(&regex,
                          &matches,
                          "I love cats, and I like dogs, but I dislike gophers");
 
+/* free regex */
 tasty_regex_free(&regex);
 
+/* do stuff with matches */
+
+/* free matches */
+tasty_match_interval_free(&matches);
 ```
 
+
+
+###Traversing Matches
+
+A `TastyMatch` refers to a single match on an input `string`:
 ```
 /* defines an match interval on a string: from ≤ token < until */
 struct TastyMatch {
         const char *restrict from;
         const char *restrict until;
 };
+```
+`from` points to the first byte of the match and `until` points to memory immediately following the last byte of the match. To obtain the length of a match, subtract `from` from `until`. Because empty matches are not recorded, `until` will always be greater than `from` (length(*match*) ≥ 1).  
 
+
+A `TastyMatchInterval` refers to the set of all matches found after a call to `tasty_regex_run`:
+```
 /* defines an array of matches: from ≤ match < until */
 struct TastyMatchInterval {
         struct TastyMatch *restrict from;
         struct TastyMatch *restrict until;
 };
 ```
+`from` points to the first `TastyMatch` and `until` points to memory immediately following the last `TastyMatch`. To obtain the count of all matches, subtract `from` from `until`. Accordingly, an empty match set is conveyed when `from == until` (must still be freed to avoid memory leaks).  
 
-###Traversing TastyMatchInterval
+
+**example**  
+```
+#include <unistd.h>        /* write, STDOUT_FILENO */
+#include <assert.h>        /* assert */
+
+void
+print_matches(const struct TastyMatch *const restrict matches)
+{
+        const struct TastyMatch *restrict match;
+
+        for (match = matches->from; match < matches->until; ++match) {
+                assert(write(STDOUT_FILENO,
+                             match->from,
+                             match->until - match->from) >= 0);
+
+                assert(write(STDOUT_FILENO,
+                             "\n",
+                             sizeof("\n")) >= 0);
+        }
+}
+```
+
+
+
 ##Build
 
 
@@ -259,7 +306,6 @@ struct TastyRegex {
 where links labeled  `[match 'CHAR']` represent explicit character matches and `[skip]` links represent a valid non-matching path. A list of accumulating matches is updated while an input `string` is traversed one character at a time (without backtracking).
 A `TastyMatch` is populated and added to the `TastyMatchInterval` when an accumulating match has traversed the entirety of the compiled DFA.
 
-While this implementation PCRE *O*(*mn*)
 
 
 ##Comparison to Pearl-Compatible Regular Expression (PCRE) Engines
