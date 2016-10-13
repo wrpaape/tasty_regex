@@ -119,7 +119,6 @@ endif
 # ══════════════════════════════════════════════════════════════════════════════
 PATH_JOIN		 = $(call JOIN,$1,$(PATH_DELIM))
 SYSTEM_ROOT_PATH	 = $(call TRIM,$(PATH_DELIM)$(call PATH_JOIN,$1))
-PROJECT 		:= tasty_grep
 PROJECT_ROOT		:= ..
 SOURCE_DIR		:= $(call PATH_JOIN,$(PROJECT_ROOT) src)
 HEADER_DIR		:= $(SOURCE_DIR)
@@ -332,17 +331,17 @@ TARGETS				+= $(TASTY_REGEX_SHARED)	\
 
 # tasty_grep (entry point)
 # ──────────────────────────────────────────────────────────────────────────────
-PROJECT_SRC 		:= $(call SOURCE_PATH,$(PROJECT))
-PROJECT_HDR		:= $(call HEADER_PATH,$(PROJECT))
-PROJECT_OBJ 		:= $(call OBJECT_PATH,$(PROJECT))
-PROJECT_BIN 		:= $(call BINARY_PATH,$(PROJECT))
+TASTY_GREP_SRC 		:= $(call SOURCE_PATH,tasty_grep)
+TASTY_GREP_HDR		:= $(call HEADER_PATH,tasty_grep)
+TASTY_GREP_OBJ 		:= $(call OBJECT_PATH,tasty_grep)
+TASTY_GREP_BIN 		:= $(call BINARY_PATH,tasty_grep)
 # ─────────────── target prequisites ───────────────────────────────────────────
-PROJECT_BIN_PREQS	:= $(PROJECT_OBJ)
-PROJECT_OBJ_PREQS	:= $(PROJECT_SRC) 	\
-			   $(PROJECT_HDR)
+TASTY_GREP_BIN_PREQS	:= $(TASTY_GREP_OBJ)
+TASTY_GREP_OBJ_PREQS	:= $(TASTY_GREP_SRC) 	\
+			   $(TASTY_GREP_HDR)
 # ─────────────── targets ──────────────────────────────────────────────────────
-TARGETS			+= $(PROJECT_OBJ)	\
-			   $(PROJECT_BIN)
+TARGETS			+= $(TASTY_GREP_OBJ)	\
+			   $(TASTY_GREP_BIN)
 
 
 
@@ -438,12 +437,12 @@ clean:
 # ══════════════════════════════════════════════════════════════════════════════
 # make tasty_grep binary
 # ──────────────────────────────────────────────────────────────────────────────
-$(PROJECT_BIN): $(PROJECT_BIN_PREQS)
+$(TASTY_GREP_BIN): $(TASTY_GREP_BIN_PREQS)
 	$(LD) $(LD_FLAGS) $(LD_BIN_FLAGS) $^ $(LD_LIB_FLAGS) -o $@
 
 # make tasty_grep object
 # ──────────────────────────────────────────────────────────────────────────────
-$(PROJECT_OBJ): $(PROJECT_OBJ_PREQS)
+$(TASTY_GREP_OBJ): $(TASTY_GREP_OBJ_PREQS)
 	$(CC) $(CC_FLAGS) -c $< -o $@
 
 # make tasty_regex static library

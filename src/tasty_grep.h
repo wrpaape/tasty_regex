@@ -6,6 +6,9 @@ extern "C" {
 
 /* external dependencies
  * ────────────────────────────────────────────────────────────────────────── */
+#include "tasty_regex.h" /* tasty_regex_compile|run|freeX */
+#include "tasty_grep_utils.h"
+
 
 
 

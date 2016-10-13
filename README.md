@@ -2,8 +2,8 @@
 
 ##Overview
 `tasty_regex` is a light-weight regular expression engine that guarantees worst-case *O*(*mn*) performance where  
-*m* := *length*(`pattern`) and
-*n* := *length*(`string`).
+*m* := length(`pattern`) and
+*n* := length(`string`).
 UTF8 patterns are supported along with the following operators:  
 
 | Operator | Use     | Description                             |
@@ -32,15 +32,15 @@ tasty_regex_compile(struct TastyRegex *const restrict regex,
                     const char *restrict pattern);
 ```
 
-| Return Value                         | Description                                                                                    |
-| :----------------------------------: | :--------------------------------------------------------------------------------------------- |
-| `0`                                  | compiled successfully                                                                          |
-| `TASTY_ERROR_OUT_OF_MEMORY`          | failed to allocate sufficient memory                                                           |
-| `TASTY_ERROR_EMPTY_EXPRESSION`	     | empty `pattern` or subexpression (i.e. `()`, `&#124;&#124;`, `&#124;)`, etc ...)               |
-| `TASTY_ERROR_UNBALANCED_PARENTHESES` | unbalanced parentheses (i.e. `((ab)`, `aab)`, etc ...)                                         |
-| `TASTY_ERROR_INVALID_ESCAPE`	       | character following `\` is not in set `?*+&#124;.()\`                                          |
-| `TASTY_ERROR_NO_OPERAND`		         | no matchable expression preceeding `?`, `*`, or `+` (i.e. `*abc`, `b&#124;?b`, `a++`, etc ...) |
-| `TASTY_ERROR_INVALID_UTF8`	         | `pattern` includes at least 1 invalid (non-UTF8) byte sequence                                 |
+| Return Value                         | Description                                                                               |
+| :----------------------------------: | :---------------------------------------------------------------------------------------- |
+| `0`                                  | compiled successfully                                                                     |
+| `TASTY_ERROR_OUT_OF_MEMORY`          | failed to allocate sufficient memory                                                      |
+| `TASTY_ERROR_EMPTY_EXPRESSION`	     | empty `pattern` or subexpression (i.e. `()`, `||`, `|)`, etc ...)                         |
+| `TASTY_ERROR_UNBALANCED_PARENTHESES` | unbalanced parentheses (i.e. `((ab)`, `aab)`, etc ...)                                    |
+| `TASTY_ERROR_INVALID_ESCAPE`	       | character following `\` is not in set `?*+|.()\`                                          |
+| `TASTY_ERROR_NO_OPERAND`		         | no matchable expression preceeding `?`, `*`, or `+` (i.e. `*abc`, `b|?b`, `a++`, etc ...) |
+| `TASTY_ERROR_INVALID_UTF8`	         | `pattern` includes at least 1 invalid (non-UTF8) byte sequence                            |
 
 **example**  
 ```
@@ -101,8 +101,8 @@ tasty_regex_free(&regex);
 ```
 int
 tasty_regex_run(const struct TastyRegex *const restrict regex,
-		struct TastyMatchInterval *const restrict matches,
-		const char *restrict string);
+                struct TastyMatchInterval *const restrict matches,
+                const char *restrict string);
 ```
 
 | Return Value                         | Description                          |
@@ -309,4 +309,4 @@ A `TastyMatch` is populated and added to the `TastyMatchInterval` when an accumu
 
 
 ##Comparison to Pearl-Compatible Regular Expression (PCRE) Engines
-PCRE engines employed in Perl, Python, PHP, Ruby, Java, and many other languages must rely on recursive backtracking to support nifty extensions (such as "backreferences"), and so they are subject to exponential blowup when matching "pathological" patterns against certain input strings. `tasty_regex`'s implementation borrows from the unix utilities 'awk' and 'grep'--a pattern is compiled down to an equivalent nondeterministic finite automaton (DFA) which is matched much like a substring against input strings. Though less sophisticated, this solution handles all supported pattern-string input pairs in time capped proportionally to the product of their lengths.
+PCRE engines employed in Perl, Python, PHP, Ruby, Java, and many other languages must rely on recursive backtracking to support nifty extensions (such as "backreferences"), and so they are subject to exponential blowup when matching "pathological" patterns against certain input strings. `tasty_regex`'s implementation borrows from the unix utilities 'awk' and 'grep'--a pattern is compiled down to an equivalent deterministic finite automaton (DFA) which is matched much like a substring against input strings. Though less sophisticated, this solution handles all supported pattern-string input pairs in time capped proportionally to the product of their lengths.
