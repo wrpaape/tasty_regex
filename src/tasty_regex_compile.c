@@ -89,7 +89,6 @@ concat_patches(struct TastyPatchList *const restrict patches1,
 	patches1->end_ptr    = patches2->end_ptr;
 }
 
-/* TODO: check that skip routes are properly flattened */
 static inline void
 merge_states(union TastyState *const restrict state1,
 	     union TastyState *const restrict state2)
@@ -98,10 +97,24 @@ merge_states(union TastyState *const restrict state1,
 	union TastyState *restrict *restrict state2_from;
 
 	state1_from = &state1->skip;
+
+	/* flatten skip route in state1 */
+	if (*state1_from != NULL_POINTER)
+		merge_states(*state1_from,
+			     state2);
+
 	state2_from = &state2->skip;
 
+	/* flatten skip route in state2 */
+	if (*state2_from != NULL_POINTER)
+		merge_states(state1,
+			     *state2_from);
+
+	++state1_from;
 	union TastyState *restrict *const restrict state1_until
-	= state1_from + (UCHAR_MAX + 1l);
+	= state1_from + UCHAR_MAX;
+
+	++state2_from;
 
 	while (1) {
 		/* no conflict, merge state2's branch into state1 */
@@ -110,7 +123,6 @@ merge_states(union TastyState *const restrict state1,
 
 		/* fork on same match (NFA), need to flatten branch */
 		} else if (*state2_from != NULL_POINTER) {
-			puts("merging awooga");
 			merge_states(*state1_from,
 				     *state2_from);
 		}

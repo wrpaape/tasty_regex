@@ -159,7 +159,7 @@ int status;
 
 /* should succeed (return 0) */
 status = tasty_regex_compile(&regex,
-                             "I (dis)?like (cat|dog|gopher)s");
+                             "I (love|(dis)?like) (cat|dog|gopher)s");
 
 if (status != 0) {
         /* handle failure */
@@ -167,7 +167,7 @@ if (status != 0) {
 
 status = tasty_regex_run(&regex,
                          &matches,
-                         "I love cats, and I like dogs, but I hate gophers");
+                         "I love cats, and I like dogs, but I dislike gophers");
 
 tasty_regex_free(&regex);
 
