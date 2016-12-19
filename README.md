@@ -215,21 +215,40 @@ struct TastyMatchInterval {
 ```
 #include <unistd.h>        /* write, STDOUT_FILENO */
 #include <assert.h>        /* assert */
+#include <string.h>        /* memcpy */
 
 void
-print_matches(const struct TastyMatch *const restrict matches)
+print_matches(const struct TastyMatchInterval *const restrict matches)
 {
+        char buffer[MAX_BUFFER];
+        char *restrict ptr;
         const struct TastyMatch *restrict match;
+        size_t length;
 
-        for (match = matches->from; match < matches->until; ++match) {
-                assert(write(STDOUT_FILENO,
-                             match->from,
-                             match->until - match->from) >= 0);
+        match = matches->from;
 
-                assert(write(STDOUT_FILENO,
-                             "\n",
-                             sizeof("\n")) >= 0);
-        }
+        if (match == matches->until)
+                return;
+
+        ptr = &buffer[0];
+
+        do {
+                length = match->until - match->from;
+
+                (void) memcpy(ptr,
+                              match->from,
+                              length);
+
+                ptr += length;
+                *ptr = '\n';
+                ++ptr;
+
+                ++match;
+        } while (match < matches->until);
+
+        assert(write(STDOUT_FILENO,
+                     &buffer[0],
+                     ptr - &buffer[0]) >= 0);
 }
 ```
 
