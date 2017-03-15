@@ -25,7 +25,7 @@ Matching via `tasty_regex_run` is *greedy* (match as many characters as possible
 
 ### tasty_regex_compile
 
-####"Compile"s a regular expression, `regex`, from an input `pattern`
+#### "Compile"s a regular expression, `regex`, from an input `pattern`
 
 ```
 int
