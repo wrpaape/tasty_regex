@@ -1,6 +1,7 @@
 # tasty_regex
 
-##Overview
+## Overview
+
 `tasty_regex` is a light-weight regular expression engine that guarantees worst-case *O*(*mn*) performance where  
 *m* := length(`pattern`) and
 *n* := length(`string`).
@@ -20,9 +21,9 @@ Matching via `tasty_regex_run` is *greedy* (match as many characters as possible
 
 
 
-##Usage
+## Usage
 
-###tasty_regex_compile
+### tasty_regex_compile
 
 ####"Compile"s a regular expression, `regex`, from an input `pattern`
 
@@ -69,9 +70,9 @@ If `0` is returned, compilation succeeded and `regex`'s internals (see [Implemen
 
 
 
-###tasty_regex_free
+### tasty_regex_free
 
-####Frees dynamically-allocated memory referred to in a `TastyRegex` after a successful call to `tasty_regex_compile`
+#### Frees dynamically-allocated memory referred to in a `TastyRegex` after a successful call to `tasty_regex_compile`
 
 ```
 extern inline void
@@ -94,9 +95,9 @@ if (status != 0) {
 tasty_regex_free(&regex);
 ```
 
-###tasty_regex_run
+### tasty_regex_run
 
-####Matches `string` against compiled regular expression, `regex`
+#### Matches `string` against compiled regular expression, `regex`
 
 ```
 int
@@ -143,9 +144,9 @@ If `0` is returned, execution has succeeded and `matches` should refer to a free
 
 
 
-###tasty_match_interval_free
+### tasty_match_interval_free
 
-####Frees dynamically-allocated memory referred to by a `TastyMatchInterval` after a successful call to `tasty_regex_run`
+#### Frees dynamically-allocated memory referred to by a `TastyMatchInterval` after a successful call to `tasty_regex_run`
 
 ```
 extern inline void
@@ -187,7 +188,7 @@ tasty_match_interval_free(&matches);
 
 
 
-###Traversing Matches
+### Traversing Matches
 
 A `TastyMatch` refers to a single match on an input `string`:
 ```
@@ -254,11 +255,11 @@ print_matches(const struct TastyMatchInterval *const restrict matches)
 
 
 
-##Build
+## Build
 
 
 
-##Implementation
+## Implementation
 Under the hood `tasty_regex` "compile"s an input `pattern` into a deterministic finite automaton (DFA), a graph data structure that can be traversed alongside an input `string` to efficiently locate matches:
 
 ```
@@ -327,5 +328,5 @@ A `TastyMatch` is populated and added to the `TastyMatchInterval` when an accumu
 
 
 
-##Comparison to Pearl-Compatible Regular Expression (PCRE) Engines
+## Comparison to Pearl-Compatible Regular Expression (PCRE) Engines
 PCRE engines employed in Perl, Python, PHP, Ruby, Java, and many other languages must rely on recursive backtracking to support nifty extensions (such as "backreferences"), and so they are subject to exponential blowup when matching "pathological" patterns against certain input strings. `tasty_regex`'s implementation borrows from the unix utilities 'awk' and 'grep'--a pattern is compiled down to an equivalent deterministic finite automaton (DFA) which is matched much like a substring against input strings. Though less sophisticated, this solution handles all supported pattern-string input pairs in time capped proportionally to the product of their lengths.
